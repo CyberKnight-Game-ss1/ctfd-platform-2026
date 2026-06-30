@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-hero page-hero-compact">
+    <div class="container">
+      <div class="page-head">
+        <p class="eyebrow">{% trans %}Team invite{% endtrans %}</p>
+        <h1>{% trans %}Join Team{% endtrans %}</h1>
+        <p class="lede">{% trans %}Accept the invitation below to join the selected team, or create your own instead.{% endtrans %}</p>
+      </div>
+    </div>
+  </section>
+  <section class="page-section">
+    <div class="container">
+      <div class="page-panel auth-copy form-panel">
+        {% include "components/errors.html" %}
+
+        <p class="h3 text-center mt-md-4">
+          {% trans %}Welcome to{% endtrans %} <strong>{{ team.name }}</strong>!
+        </p>
+
+        <p class="text-center">
+          {% trans %}Click the button below to join the team!{% endtrans %}
+          <br>
+          <small class="text-muted">
+            {% trans create_url=url_for('teams.new') %}Or <a href="{{ create_url }}">click here</a> if you'd prefer to create your own team.{% endtrans %}
+          </small>
+        </p>
+
+        {% with form = Forms.teams.TeamInviteJoinForm() %}
+          <form method="POST">
+            <div class="row pt-3 text-center">
+              <div class="col-md-12">
+                {{ form.submit(class="btn btn-primary w-100") }}
+              </div>
+            </div>
+            {{ form.nonce() }}
+          </form>
+        {% endwith %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

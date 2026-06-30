@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: isolate-pwn-category
+  namespace: pwn
+spec:
+  podSelector: {} # Selects all pods in the 'pwn' namespace
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow traffic from specific web namespaces or load balancers if needed
+  # For challenges, usually we only allow traffic from the ingress controller or specific ttyd gateway
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: gateway
+  egress:
+  # Deny all outgoing traffic by default to prevent reverse shells from connecting to external networks
+  # Only allow DNS (UDP 53) if really necessary, but generally pwn challenges shouldn't reach the internet
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53

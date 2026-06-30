@@ -1,0 +1,127 @@
+---
+- name: Configure VM1 (Web and Scoreboard)
+  hosts: vm1_web
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - nginx
+          - docker.io
+          - docker-compose
+        state: present
+
+    - name: Create CTFd directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      with_items:
+        - /opt/ctfd
+        - /opt/ctfd/themes
+
+    - name: Copy custom themes
+      copy:
+        src: ../themes/
+        dest: /opt/ctfd/themes/
+
+    - name: Create docker-compose.yml for CTFd and Redis
+      copy:
+        dest: /opt/ctfd/docker-compose.yml
+        content: |
+          version: '3'
+          services:
+            ctfd:
+              image: ctfd/ctfd:latest
+              restart: always
+              ports:
+                - "8000:8000"
+              environment:
+                - SECRET_KEY=generate_me_randomly_in_prod
+                - UPLOAD_FOLDER=/var/uploads
+                - DATABASE_URL=${DATABASE_URL}
+                - REDIS_URL=redis://cache:6379
+                - WORKERS=4
+                - LOG_FOLDER=/var/log/CTFd
+                - ACCESS_LOG=-
+                - ERROR_LOG=-
+                - REVERSE_PROXY=True
+              volumes:
+                - /opt/ctfd/logs:/var/log/CTFd
+                - /opt/ctfd/uploads:/var/uploads
+                - /opt/ctfd/themes/ctfd-theme-neubrutalism:/opt/CTFd/CTFd/themes/ctfd-theme-neubrutalism
+                - /opt/ctfd/themes/m0xblood-ctfd-theme/m0xblood:/opt/CTFd/CTFd/themes/m0xblood
+                - /opt/ctfd/themes/ctfd-neon-theme:/opt/CTFd/CTFd/themes/ctfd-neon-theme
+              depends_on:
+                - cache
+            
+            cache:
+              image: redis:4
+              restart: always
+              volumes:
+                - /opt/ctfd/redis:/data
+
+            worker:
+              build: .
+              user: root
+              restart: always
+              command: [ "opt/CTFd/ping.sh", "redis:6379", "worker" ]
+              environment:
+                - SECRET_KEY=generate_me_randomly_in_prod
+                - UPLOAD_FOLDER=/var/uploads
+                - DATABASE_URL=${DATABASE_URL}
+                - REDIS_URL=redis://cache:6379
+                - WORKERS=1
+                - LOG_FOLDER=/var/log/CTFd
+                - ACCESS_LOG=-
+                - ERROR_LOG=-
+                - REVERSE_PROXY=True
+              volumes:
+                - /opt/ctfd/logs:/var/log/CTFd
+                - /opt/ctfd/uploads:/var/uploads
+              depends_on:
+                - ctfd
+                - cache
+
+    - name: Start CTFd via docker-compose
+      # In reality, ${DATABASE_URL} is fetched from Secret Manager via startup script or env var injected by ansible
+      # Here we assume it's passed as an extra var `db_url`
+      shell: "DATABASE_URL={{ db_url | default('sqlite:////opt/ctfd/ctfd.db') }} docker-compose up -d"
+      args:
+        chdir: /opt/ctfd
+
+    - name: Configure Nginx as Reverse Proxy
+      copy:
+        dest: /etc/nginx/sites-available/default
+        content: |
+          server {
+              listen 80 default_server;
+              client_max_body_size 200M;
+              
+              # Proxy to CTFd
+              location / {
+                  proxy_pass http://127.0.0.1:8000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+          
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
+
+    # Google Cloud Logging agent is installed by default on GCP images,
+    # but we need to configure it to read nginx access logs if not using structured logging.
+    # The simplest way is to ensure nginx logs to syslog or use Ops Agent.
+    - name: Install Google Cloud Ops Agent for Logging
+      shell: "curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh && bash add-google-cloud-ops-agent-repo.sh --also-install"
+      args:
+        creates: /opt/google-cloud-ops-agent/bin/google_cloud_ops_agent_engine

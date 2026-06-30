@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-hero page-hero-compact">
+    <div class="container">
+      <div class="page-head">
+        <!-- <p class="eyebrow">{% trans %}Inbox{% endtrans %}</p> -->
+        <h1>{% trans %}Notifications{% endtrans %}</h1>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container">
+      <div class="notification-list">
+        {% if not notifications %}
+          <div class="empty-state">
+            <p class="eyebrow">{% trans %}No notifications{% endtrans %}</p>
+            <h3>{% trans %}There are no notifications yet{% endtrans %}</h3>
+          </div>
+        {% endif %}
+        {% for notification in notifications %}
+          <article class="page-panel notification-card">
+            <h2>{{ notification.title }}</h2>
+            <div class="content-prose">{{ notification.html | safe }}</div>
+            <small class="notification-meta"><span data-time="{{ notification.date | isoformat }}"></span></small>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  {{ Assets.js("assets/js/notifications.js") }}
+{% endblock %}

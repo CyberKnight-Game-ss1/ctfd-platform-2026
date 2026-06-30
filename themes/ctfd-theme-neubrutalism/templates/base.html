@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ title or Configs.ctf_name }}</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="shortcut icon" href="{{ Configs.ctf_small_icon }}" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+  >
+  <style>
+    body { 
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      /* Tech Grid Background - Light Mode */
+      background-color: #f8fafc !important;
+      background-image: 
+        linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px) !important;
+      background-size: 30px 30px !important;
+      background-position: center center !important;
+    }
+    
+    /* Tech Grid Background - Dark Mode */
+    html[data-bs-theme="dark"] body {
+      background-color: #0f172a !important;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px) !important;
+    }
+
+    /* Force white text and icons in Header and Footer */
+    .navbar, .navbar a, .navbar span, .navbar i, .navbar svg,
+    .footer, .footer a, .footer span, .footer i, .footer svg {
+      color: #ffffff !important;
+      fill: #ffffff !important;
+    }
+    .navbar-toggler-icon {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+    }
+  </style>
+
+  {{ meta | safe }}
+
+  {% block stylesheets %}
+    {{ Assets.css("assets/scss/main.scss") }}
+  {% endblock %}
+
+  {{ Plugins.styles }}
+
+  {{ Assets.js("assets/js/color_mode_switcher.js", type=None) }}
+
+  <script type="text/javascript">
+      window.init = {
+          'urlRoot': "{{ request.script_root }}",
+          'csrfNonce': "{{ Session.nonce }}",
+          'userMode': "{{ Configs.user_mode }}",
+          'userId': {{ Session.id }},
+          'userName': {{ User.name | tojson }},
+          'userEmail': {{ User.email | tojson }},
+          'userVerified': {{ User.verified | tojson }},
+          'teamId': {{ Team.id | tojson }},
+          'teamName': {{ Team.name | tojson }},
+          'start': {{ Configs.start | tojson }},
+          'end': {{ Configs.end | tojson }},
+          'themeSettings': {{ Configs.theme_settings | tojson }},
+          'eventSounds': [
+            "/themes/core/static/sounds/notification.webm",
+            "/themes/core/static/sounds/notification.mp3",
+          ],
+      }
+      window.ctfdThemeText = {
+          copied: {{ _("Copied!") | tojson }},
+      }
+  </script>
+
+  {{ Configs.theme_header }}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+<div class="site-chroma site-chroma-a" aria-hidden="true"></div>
+<div class="site-chroma site-chroma-b" aria-hidden="true"></div>
+
+<main role="main">
+  {% include "components/navbar.html" %}
+    <section class="main-section">
+      {% block content %}{% endblock %}
+    </section>
+  {% include "components/snackbar.html" %}
+  {% include "components/footer.html" %}
+</main>
+
+{% include "components/notifications.html" %}
+
+{% block scripts %}
+  {{ Assets.js("assets/js/page.js") }}
+{% endblock %}
+
+{{ Plugins.scripts }}
+
+{{ Configs.theme_footer }}
+</body>
+</html>

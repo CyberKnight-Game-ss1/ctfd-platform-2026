@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-hero page-hero-short">
+    <div class="container">
+      <div class="page-head">
+        <!-- <p class="eyebrow">{% trans %}Account access{% endtrans %}</p> -->
+        <h1>{% trans %}Login{% endtrans %}</h1>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container">
+        <div class="auth-panel form-panel form-panel-narrow">
+        {% include "components/errors.html" %}
+
+        {% if integrations.mlc() %}
+          <a class="btn btn-secondary btn-lg btn-block w-100" href="{{ url_for('auth.oauth_login') }}">
+            Login with Major League Cyber
+          </a>
+
+          <hr>
+        {% endif %}
+
+        {% with form = Forms.auth.LoginForm() %}
+          <form method="post" accept-charset="utf-8">
+            <div class="mb-3">
+              <b>
+                {{ form.name.label(class="form-label") }}
+                <span class="text-danger">*</span>
+              </b>
+              {{ form.name(class="form-control", value=name, autocomplete="username email") }}
+            </div>
+
+            <div class="mb-3">
+              <b>
+                {{ form.password.label(class="form-label") }}
+                <span class="text-danger">*</span>
+              </b>
+              {{ form.password(class="form-control", value=password, autocomplete="current-password") }}
+            </div>
+
+            <div class="row pt-3">
+              <div class="col-6 col-md-8">
+                <a class="align-middle" href="{{ url_for('auth.reset_password') }}">
+                  {% trans %}Forgot your password?{% endtrans %}
+                </a>
+              </div>
+
+              <div class="col-6 col-md-4">
+                {{ form.submit(class="btn btn-block btn-primary w-100") }}
+              </div>
+            </div>
+
+            {{ form.nonce() }}
+          </form>
+        {% endwith %}
+        </div>
+    </div>
+  </section>
+{% endblock %}

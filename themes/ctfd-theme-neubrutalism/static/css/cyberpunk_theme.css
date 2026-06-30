@@ -1,0 +1,174 @@
+:root {
+  /* Cyberpunk Color Palette */
+  --bs-body-bg: #050510;
+  --bs-body-color: #00f3ff;
+  --bs-primary: #ff003c;
+  --bs-secondary: #00f3ff;
+  --bs-success: #00ff00;
+  --bs-info: #00f3ff;
+  --bs-warning: #fcee0a;
+  --bs-danger: #ff003c;
+  --bs-light: #e0e0e0;
+  --bs-dark: #000000;
+  --bs-link-color: #fcee0a;
+  --bs-link-hover-color: #ff003c;
+  --bs-font-sans-serif: 'Courier New', Courier, monospace;
+}
+
+body {
+  background-color: var(--bs-body-bg);
+  /* Cyberpunk Grid Background */
+  background-image: 
+    linear-gradient(rgba(0, 243, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 243, 255, 0.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+  color: var(--bs-body-color);
+  font-family: 'Courier New', Courier, monospace;
+  text-shadow: 0 0 5px rgba(0, 243, 255, 0.4);
+}
+
+/* Navbar */
+.navbar {
+  background-color: rgba(0, 0, 0, 0.95) !important;
+  border-bottom: 2px solid var(--bs-primary);
+  box-shadow: 0 0 20px rgba(255, 0, 60, 0.6);
+}
+
+.navbar-brand, .nav-link {
+  color: var(--bs-secondary) !important;
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.nav-link:hover {
+  color: var(--bs-primary) !important;
+  text-shadow: 0 0 10px var(--bs-primary);
+}
+
+/* Buttons */
+.btn-primary, .btn-success, .btn-info, .btn-danger, .btn-warning, .btn-dark {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  border-radius: 0;
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 2px;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary {
+  color: var(--bs-primary) !important;
+  border: 1px solid var(--bs-primary) !important;
+  box-shadow: 0 0 10px rgba(255, 0, 60, 0.3), inset 0 0 5px rgba(255, 0, 60, 0.3);
+}
+
+.btn-primary:hover {
+  background-color: var(--bs-primary) !important;
+  color: #000 !important;
+  box-shadow: 0 0 20px var(--bs-primary), inset 0 0 10px var(--bs-primary);
+}
+
+.btn-dark {
+  color: var(--bs-secondary) !important;
+  border: 1px solid var(--bs-secondary) !important;
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+}
+
+.btn-dark:hover {
+  background-color: var(--bs-secondary) !important;
+  color: #000 !important;
+  box-shadow: 0 0 20px var(--bs-secondary);
+}
+
+/* Cards & Containers */
+.card, .jumbotron {
+  background-color: rgba(5, 5, 16, 0.85) !important;
+  border: 1px solid var(--bs-secondary);
+  border-radius: 0;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+}
+
+.card-header {
+  background-color: rgba(0, 243, 255, 0.1) !important;
+  border-bottom: 1px solid var(--bs-secondary) !important;
+  color: var(--bs-secondary);
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+/* Forms & Inputs */
+input.form-control, textarea.form-control, select.form-control {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  border: 1px solid var(--bs-secondary) !important;
+  border-radius: 0;
+  color: var(--bs-warning) !important;
+}
+
+input.form-control:focus, textarea.form-control:focus {
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.5) !important;
+  border-color: var(--bs-secondary) !important;
+  outline: none;
+}
+
+/* Tables */
+table {
+  color: var(--bs-body-color) !important;
+}
+
+th {
+  color: var(--bs-primary) !important;
+  border-bottom: 2px solid var(--bs-primary) !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+td {
+  border-color: rgba(0, 243, 255, 0.2) !important;
+}
+
+/* Modals */
+.modal-content {
+  background-color: rgba(5, 5, 16, 0.95);
+  border: 2px solid var(--bs-primary);
+  border-radius: 0;
+  box-shadow: 0 0 40px rgba(255, 0, 60, 0.4);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--bs-primary);
+}
+
+.modal-title {
+  color: var(--bs-primary);
+  text-shadow: 0 0 10px var(--bs-primary);
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.close {
+  color: var(--bs-primary);
+  text-shadow: 0 0 10px var(--bs-primary);
+}
+
+/* Badges */
+.badge {
+  background-color: transparent !important;
+  border: 1px solid var(--bs-warning);
+  color: var(--bs-warning) !important;
+  box-shadow: 0 0 5px rgba(252, 238, 10, 0.5);
+  border-radius: 0;
+}
+
+/* Scoreboard Graph */
+#score-graph {
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--bs-secondary);
+  padding: 10px;
+}
+
+/* Selection */
+::selection {
+  background: var(--bs-primary);
+  color: #000;
+}

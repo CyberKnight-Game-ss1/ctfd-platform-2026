@@ -1,0 +1,179 @@
+{
+  "assets/js/index.js": {
+    "file": "assets/index.f4131aaa.js",
+    "src": "assets/js/index.js",
+    "isEntry": true
+  },
+  "assets/js/page.js": {
+    "file": "assets/page.f16eaf7d.js",
+    "src": "assets/js/page.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js"
+    ]
+  },
+  "assets/js/setup.js": {
+    "file": "assets/setup.50112bce.js",
+    "src": "assets/js/setup.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js"
+    ]
+  },
+  "assets/js/settings.js": {
+    "file": "assets/settings.f99f15d8.js",
+    "src": "assets/js/settings.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js",
+      "_clipboard.5f2e9ae3.js"
+    ]
+  },
+  "assets/js/challenges.js": {
+    "file": "assets/challenges.11742101.js",
+    "src": "assets/js/challenges.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js"
+    ]
+  },
+  "assets/js/scoreboard.js": {
+    "file": "assets/scoreboard.f31c43cc.js",
+    "src": "assets/js/scoreboard.js",
+    "isEntry": true,
+    "imports": [
+      "_preload-helper.4cee51f5.js",
+      "assets/js/index.js"
+    ],
+    "dynamicImports": [
+      "assets/js/utils/graphs/echarts/scoreboard.js",
+      "assets/js/utils/graphs/echarts/index.js"
+    ]
+  },
+  "assets/js/notifications.js": {
+    "file": "assets/notifications.a285073c.js",
+    "src": "assets/js/notifications.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js"
+    ]
+  },
+  "assets/js/teams/public.js": {
+    "file": "assets/teams_public.eed87bb1.js",
+    "src": "assets/js/teams/public.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js",
+      "_profile-chart-runtime.3b47a1ce.js",
+      "_preload-helper.4cee51f5.js"
+    ]
+  },
+  "assets/js/teams/private.js": {
+    "file": "assets/teams_private.410de3bd.js",
+    "src": "assets/js/teams/private.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js",
+      "_clipboard.5f2e9ae3.js",
+      "_profile-chart-runtime.3b47a1ce.js",
+      "_preload-helper.4cee51f5.js"
+    ]
+  },
+  "assets/js/teams/list.js": {
+    "file": "assets/teams_list.451fe50f.js",
+    "src": "assets/js/teams/list.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js"
+    ]
+  },
+  "assets/js/users/public.js": {
+    "file": "assets/users_public.84da5cbd.js",
+    "src": "assets/js/users/public.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js",
+      "_profile-chart-runtime.3b47a1ce.js",
+      "_preload-helper.4cee51f5.js"
+    ]
+  },
+  "assets/js/users/private.js": {
+    "file": "assets/users_private.e9c62416.js",
+    "src": "assets/js/users/private.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js",
+      "_profile-chart-runtime.3b47a1ce.js",
+      "_preload-helper.4cee51f5.js"
+    ]
+  },
+  "assets/js/users/list.js": {
+    "file": "assets/users_list.03cd3214.js",
+    "src": "assets/js/users/list.js",
+    "isEntry": true,
+    "imports": [
+      "assets/js/index.js"
+    ]
+  },
+  "assets/js/color_mode_switcher.js": {
+    "file": "assets/color_mode_switcher.ef7861d7.js",
+    "src": "assets/js/color_mode_switcher.js",
+    "isEntry": true
+  },
+  "_echarts.df0ab001.js": {
+    "file": "assets/echarts.df0ab001.js"
+  },
+  "_clipboard.5f2e9ae3.js": {
+    "file": "assets/clipboard.5f2e9ae3.js",
+    "imports": [
+      "assets/js/index.js"
+    ]
+  },
+  "_preload-helper.4cee51f5.js": {
+    "file": "assets/preload-helper.4cee51f5.js"
+  },
+  "_profile-chart-runtime.3b47a1ce.js": {
+    "file": "assets/profile-chart-runtime.3b47a1ce.js",
+    "imports": [
+      "_preload-helper.4cee51f5.js"
+    ],
+    "dynamicImports": [
+      "assets/js/utils/graphs/echarts/userscore.js",
+      "assets/js/utils/graphs/echarts/index.js"
+    ]
+  },
+  "assets/js/utils/graphs/echarts/scoreboard.js": {
+    "file": "assets/scoreboard.53ba0873.js",
+    "src": "assets/js/utils/graphs/echarts/scoreboard.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_chart-theme.a2892680.js",
+      "assets/js/index.js"
+    ]
+  },
+  "_chart-theme.a2892680.js": {
+    "file": "assets/chart-theme.a2892680.js"
+  },
+  "assets/js/utils/graphs/echarts/index.js": {
+    "file": "assets/index.4e0c8526.js",
+    "src": "assets/js/utils/graphs/echarts/index.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_echarts.df0ab001.js"
+    ]
+  },
+  "assets/js/utils/graphs/echarts/userscore.js": {
+    "file": "assets/userscore.b8e00bf7.js",
+    "src": "assets/js/utils/graphs/echarts/userscore.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_chart-theme.a2892680.js",
+      "assets/js/index.js"
+    ]
+  },
+  "assets/scss/main.scss": {
+    "file": "assets/main.78ac8b09.css",
+    "src": "assets/scss/main.scss",
+    "isEntry": true
+  }
+}

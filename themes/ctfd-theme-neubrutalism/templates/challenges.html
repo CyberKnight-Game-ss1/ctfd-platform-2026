@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <style>
+    /* Cyberpunk / Neubrutalism Category Styling */
+    .challenge-category-filter {
+      background-color: #1e1e24 !important; /* dim background */
+      border: 2px solid #000 !important;
+      box-sizing: border-box !important;
+      transition: transform 0.1s, box-shadow 0.1s !important; /* prevent layout shift */
+      padding: 0.8rem 1.2rem !important; /* Thêm khoảng cách với khung */
+      margin-bottom: 0.5rem !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+    }
+    .challenge-category-filter .challenge-category-filter-name,
+    .challenge-category-filter .challenge-category-filter-count {
+      color: #888 !important;
+      font-weight: 400 !important; /* non-bold */
+      font-size: 1.1rem !important; /* Chữ to hơn chút */
+    }
+    .challenge-category-filter:hover {
+      background-color: #2a2a35 !important;
+    }
+    .challenge-category-filter.is-active {
+      background-color: #ff003c !important; /* bright active */
+      box-shadow: 4px 4px 0 #000 !important;
+      transform: translate(-2px, -2px) !important;
+    }
+    .challenge-category-filter.is-active .challenge-category-filter-name,
+    .challenge-category-filter.is-active .challenge-category-filter-count {
+      color: #ffffff !important; /* white title text */
+      font-weight: 400 !important; /* non-bold */
+    }
+  </style>
+  <div
+    x-data="ChallengeBoard"
+    @load-challenges.window="loadChallenges()"
+    @load-challenge.window="loadChallenge($event.detail)"
+    @clear-challenge.window="clearChallenge()"
+  >
+    <section class="page-hero">
+      <div class="container">
+        <div class="page-head">
+          <!-- <p class="eyebrow">{% trans %}List{% endtrans %}</p> -->
+          <h1>{% trans %}Challenges{% endtrans %}</h1>
+        </div>
+      </div>
+    </section>
+
+    <section class="page-section">
+      <div class="container-fluid px-lg-3 px-xl-4 px-xxl-5">
+        <div class="challenge-board-shell">
+          {% include "components/errors.html" %}
+
+          <div x-show="!loaded">
+            <div class="challenge-board-loading">
+              <div class="text-center w-100">
+                <i class="fas fa-circle-notch fa-spin fa-3x fa-fw spinner"></i>
+              </div>
+            </div>
+          </div>
+
+          <div x-show="loaded">
+            <div class="empty-state" x-show="!getCategories().length">
+              <p class="eyebrow">{% trans %}No challenges yet{% endtrans %}</p>
+              <h3>{% trans %}No challenges are available{% endtrans %}</h3>
+              <p class="text-muted mb-0">{% trans %}Challenges will appear here once categories and tasks are published.{% endtrans %}</p>
+            </div>
+
+            <div class="challenge-workspace" x-show="getCategories().length">
+              <aside class="challenge-category-rail" aria-label="{% trans %}Challenge categories{% endtrans %}">
+                <div class="challenge-column-head">
+                  <p class="eyebrow">{% trans %}Categories{% endtrans %}</p>
+                </div>
+
+                <div class="challenge-category-list" aria-label="{% trans %}Challenge category filter{% endtrans %}">
+                  <button
+                    type="button"
+                    class="challenge-category-filter"
+                    :class="{ 'is-active': activeCategory === null }"
+                    @click="setCategory(null)"
+                    :aria-pressed="activeCategory === null"
+                  >
+                    <span class="challenge-category-filter-name">{% trans %}All{% endtrans %}</span>
+                    <span class="challenge-category-filter-count" x-text="challenges.length"></span>
+                  </button>
+                  <template x-for="(category, idx) in getCategories()" :key="idx">
+                    <button
+                      type="button"
+                      class="challenge-category-filter"
+                      :class="{ 'is-active': activeCategory === category }"
+                      @click="setCategory(category)"
+                      :aria-pressed="activeCategory === category"
+                    >
+                      <span class="challenge-category-filter-name" x-text="category"></span>
+                      <span
+                        class="challenge-category-filter-count"
+                        data-singular="{{ _('challenge') }}"
+                        data-plural="{{ _('challenges') }}"
+                        x-text="`${getChallenges(category).length}`"
+                        :aria-label="`${getChallenges(category).length} ${getChallenges(category).length === 1 ? $el.dataset.singular : $el.dataset.plural}`"
+                      ></span>
+                    </button>
+                  </template>
+                </div>
+              </aside>
+
+              <section class="challenge-list-panel">
+                <div class="challenge-column-head">
+                  <h2 x-text="activeCategory || '{{ _('All Challenges') }}'"></h2>
+                  <button
+                    type="button"
+                    class="challenge-quick-toggle"
+                    :class="{ 'is-active': unsolvedOnly }"
+                    @click="toggleUnsolvedOnly()"
+                    :aria-pressed="unsolvedOnly"
+                  >
+                    {% trans %}Unsolved only{% endtrans %}
+                  </button>
+                </div>
+
+                <div class="empty-state empty-state-compact" x-show="!getVisibleChallenges().length">
+                  <h3>{% trans %}No matching challenges{% endtrans %}</h3>
+                  <p class="text-muted mb-0">{% trans %}Try another category or turn off the unsolved-only filter.{% endtrans %}</p>
+                </div>
+
+                <div class="challenge-stream" x-show="getVisibleChallenges().length">
+                  <template x-for="c in getVisibleChallenges()" :key="c.id">
+                    <button
+                      type="button"
+                      class="challenge-stream-item"
+                      :class="{
+                        'is-active': challenge && challenge.id === c.id,
+                        'challenge-solved': c.solved_by_me
+                      }"
+                      @click="loadChallenge(c.id)"
+                      :aria-pressed="challenge && challenge.id === c.id"
+                    >
+                      <div class="challenge-stream-copy">
+                        <div class="challenge-stream-title-row">
+                          <p x-text="c.name"></p>
+                          <span class="challenge-stream-points" x-text="`${c.value} pts`"></span>
+                        </div>
+                        <div class="challenge-stream-meta">
+                          <span class="challenge-card-label" x-text="c.category || activeCategory"></span>
+                          <span class="challenge-card-status" x-show="c.solved_by_me">{% trans %}Solved{% endtrans %}</span>
+                          <span class="challenge-card-status challenge-card-status-open" x-show="!c.solved_by_me">{% trans %}Open{% endtrans %}</span>
+                        </div>
+                      </div>
+                    </button>
+                  </template>
+                </div>
+              </section>
+
+              <aside class="challenge-detail-shell" x-ref="challengeDetail">
+                <div class="challenge-detail-toolbar" x-show="challenge">
+                  <button
+                    type="button"
+                    class="challenge-detail-nav"
+                    @click="goToPreviousChallenge()"
+                    :disabled="!canGoPrevious()"
+                  >
+                    {% trans %}Previous{% endtrans %}
+                  </button>
+                  <span class="challenge-detail-position" x-show="challenge">
+                    <span x-text="getCurrentChallengeIndex() + 1"></span>
+                    /
+                    <span x-text="getVisibleChallenges().length"></span>
+                  </span>
+                  <button
+                    type="button"
+                    class="challenge-detail-nav"
+                    @click="goToNextChallenge()"
+                    :disabled="!canGoNext()"
+                  >
+                    {% trans %}Next{% endtrans %}
+                  </button>
+                </div>
+
+                <template x-if="challenge">
+                  <div class="challenge-detail-frame" x-html="$store.challenge.data.view"></div>
+                </template>
+
+                <template x-if="!challenge">
+                  <div class="challenge-detail-placeholder">
+                    <p class="eyebrow">{% trans %}Details{% endtrans %}</p>
+                    <h2>{% trans %}Choose a task{% endtrans %}</h2>
+                    <p class="text-muted mb-0">{% trans %}Pick a challenge from the list to read the prompt, open files, and submit a flag here.{% endtrans %}</p>
+                  </div>
+                </template>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ Assets.js("assets/js/challenges.js") }}
+{% endblock %}

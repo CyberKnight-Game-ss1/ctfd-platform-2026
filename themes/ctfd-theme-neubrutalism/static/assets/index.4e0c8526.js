@@ -1,0 +1,1 @@
+import{u as a,i as e,a as n,b as l,c as r,d as o,e as d}from"./echarts.df0ab001.js";a([n,l,r,o,d]);function $(i,t){let s=e(i);s.setOption(t,!0),window.addEventListener("resize",()=>{s&&s.resize()})}export{$ as embed};

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-hero page-hero-compact">
+    <div class="container">
+      <div class="page-head">
+        <p class="eyebrow">{% trans %}Team{% endtrans %}</p>
+        <h1>{% trans %}Create Team{% endtrans %}</h1>
+        <p class="lede">{% trans %}Start a new team, set a shared password, and invite your teammates to join it.{% endtrans %}</p>
+      </div>
+    </div>
+  </section>
+  <section class="page-section">
+    <div class="container">
+      <div class="page-panel auth-copy form-panel form-panel-narrow">
+        {% include "components/errors.html" %}
+
+        {% with form = Forms.teams.TeamRegisterForm() %}
+          {% from "macros/forms.html" import render_extra_fields %}
+          <form method="POST">
+            <div class="mb-3">
+              <b>{{ form.name.label(class="form-label") }}</b>
+              {{ form.name(class="form-control") }}
+            </div>
+            <div class="mb-3">
+              <b>{{ form.password.label(class="form-label") }}</b>
+              {{ form.password(class="form-control") }}
+            </div>
+
+            {{ render_extra_fields(form.extra) }}
+
+            <div class="row ">
+              <div class="col-md-12">
+                <p>{% trans %}After creating your team, share the team name and password with your teammates so they can join your team.{% endtrans %}</p>
+                {{ form.submit(class="btn btn-primary float-end px-4") }}
+              </div>
+            </div>
+            {{ form.nonce() }}
+          </form>
+        {% endwith %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

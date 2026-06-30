@@ -1,0 +1,480 @@
+{% extends "base.html" %}
+
+{% block body_class %}setup-page{% endblock %}
+
+{% block content %}
+  <section class="page-hero page-hero-compact">
+    <div class="container">
+      <div class="page-head">
+        <p class="eyebrow">{% trans %}Event setup{% endtrans %}</p>
+        <h1>{% trans %}Setup{% endtrans %}</h1>
+        <p class="lede">
+          {% trans %}Configure the event, review access rules, and prepare the platform for launch in a guided setup flow.{% endtrans %}
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container">
+      {% with form = Forms.setup.SetupForm() %}
+      <form
+        x-data="SetupForm"
+        @submit="submitSetup"
+        method="post"
+        accept-charset="utf-8"
+        autocomplete="off"
+        role="form"
+        id="setup-form"
+        enctype="multipart/form-data"
+        class="setup-shell"
+      >
+        <div class="setup-form-panel">
+          <div class="setup-summary">
+            <div class="setup-summary-block">
+              <p class="eyebrow">{% trans %}Checklist{% endtrans %}</p>
+              <h2>{% trans %}Prepare the event in three phases{% endtrans %}</h2>
+              <p>
+                {% trans %}Work from identity to launch. Each section maps directly to live platform settings.{% endtrans %}
+              </p>
+            </div>
+            <div class="setup-summary-block setup-summary-aside">
+              <p class="eyebrow">{% trans %}Launch notes{% endtrans %}</p>
+              <p>
+                {% trans %}Branding, schedule, and sharing settings are the final checks before participants arrive.{% endtrans %}
+              </p>
+            </div>
+          </div>
+
+          <div class="setup-phase-row" aria-hidden="true">
+            <div class="setup-phase-card">
+              <span class="setup-phase-number">01</span>
+              <strong>{% trans %}Foundation{% endtrans %}</strong>
+              <small>{% trans %}General information and competition format{% endtrans %}</small>
+            </div>
+            <div class="setup-phase-card">
+              <span class="setup-phase-number">02</span>
+              <strong>{% trans %}Access{% endtrans %}</strong>
+              <small>{% trans %}Visibility rules and the first administrator{% endtrans %}</small>
+            </div>
+            <div class="setup-phase-card">
+              <span class="setup-phase-number">03</span>
+              <strong>{% trans %}Launch{% endtrans %}</strong>
+              <small>{% trans %}Appearance, timing, and external services{% endtrans %}</small>
+            </div>
+          </div>
+
+          <nav class="nav nav-pills setup-nav" aria-label="{% trans %}Setup navigation{% endtrans %}" role="tablist">
+            <button class="nav-link active" type="button" id="setup-general-tab" data-bs-toggle="pill" data-bs-target="#general" role="tab" aria-controls="general" aria-selected="true">
+              <span>01</span>
+              <strong>{% trans %}General{% endtrans %}</strong>
+              <small>{% trans %}Name and description{% endtrans %}</small>
+            </button>
+            <button class="nav-link" type="button" id="setup-mode-tab" data-bs-toggle="pill" data-bs-target="#mode" role="tab" aria-controls="mode" aria-selected="false">
+              <span>02</span>
+              <strong>{% trans %}Mode{% endtrans %}</strong>
+              <small>{% trans %}Teams or individual users{% endtrans %}</small>
+            </button>
+            <button class="nav-link" type="button" id="setup-settings-tab" data-bs-toggle="pill" data-bs-target="#settings" role="tab" aria-controls="settings" aria-selected="false">
+              <span>03</span>
+              <strong>{% trans %}Settings{% endtrans %}</strong>
+              <small>{% trans %}Visibility and registration{% endtrans %}</small>
+            </button>
+            <button class="nav-link" type="button" id="setup-administration-tab" data-bs-toggle="pill" data-bs-target="#administration" role="tab" aria-controls="administration" aria-selected="false">
+              <span>04</span>
+              <strong>{% trans %}Administration{% endtrans %}</strong>
+              <small>{% trans %}First admin account{% endtrans %}</small>
+            </button>
+            <button class="nav-link" type="button" id="setup-style-tab" data-bs-toggle="pill" data-bs-target="#style" role="tab" aria-controls="style" aria-selected="false">
+              <span>05</span>
+              <strong>{% trans %}Style{% endtrans %}</strong>
+              <small>{% trans %}Logo, banner, and theme{% endtrans %}</small>
+            </button>
+            <button class="nav-link" type="button" id="setup-datetime-tab" data-bs-toggle="pill" data-bs-target="#datetime" role="tab" aria-controls="datetime" aria-selected="false">
+              <span>06</span>
+              <strong>{% trans %}Date &amp; Time{% endtrans %}</strong>
+              <small>{% trans %}Start and end window{% endtrans %}</small>
+            </button>
+            <button class="nav-link" type="button" id="setup-integrations-tab" data-bs-toggle="pill" data-bs-target="#integrations" role="tab" aria-controls="integrations" aria-selected="false">
+              <span>07</span>
+              <strong>{% trans %}Integrations{% endtrans %}</strong>
+              <small>{% trans %}Sharing and external services{% endtrans %}</small>
+            </button>
+          </nav>
+
+          {% include "components/errors.html" %}
+
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="setup-general-tab" tabindex="0">
+              <div class="setup-pane">
+                <div class="setup-pane-header">
+                  <p class="eyebrow">{% trans %}Foundation{% endtrans %}</p>
+                  <h3>{% trans %}Define the event identity{% endtrans %}</h3>
+                  <p>{% trans %}Set the event name and overview content used across the landing page, metadata, and navigation.{% endtrans %}</p>
+                </div>
+
+                <div class="mb-3">
+                  <b>{{ form.ctf_name.label(class="form-label") }}</b>
+                  {{ form.ctf_name(class="form-control") }}
+                  <small class="form-text text-muted">{{ form.ctf_name.description }}</small>
+                </div>
+
+                <div class="mb-3">
+                  <b>{{ form.ctf_description.label(class="form-label") }}</b>
+                  {{ form.ctf_description(class="form-control", rows="6") }}
+                  <small class="form-text text-muted">{{ form.ctf_description.description }}</small>
+                </div>
+
+                <div class="setup-actions">
+                  <button type="button" class="btn btn-primary tab-next" data-href="#mode" @click="switchTab">
+                    {% trans %}Next{% endtrans %}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="mode" role="tabpanel" aria-labelledby="setup-mode-tab" tabindex="0">
+              <div class="setup-pane">
+                <div class="setup-pane-header">
+                  <p class="eyebrow">{% trans %}Foundation{% endtrans %}</p>
+                  <h3>{% trans %}Choose how people compete{% endtrans %}</h3>
+                  <p>{{ form.user_mode.description }}</p>
+                </div>
+
+                <div class="setup-choice-grid">
+                  {% for radio in form.user_mode %}
+                    <label class="setup-choice" for="{{ radio.id }}">
+                      {{ radio(class="card-radio setup-choice-radio") }}
+                      <div class="setup-choice-card">
+                        <div class="setup-choice-header">
+                          <div class="setup-choice-header-main">
+                            <span class="setup-choice-indicator"></span>
+                            <h4>{{ radio.label }}</h4>
+                          </div>
+                        </div>
+                        {% if radio.data == "teams" %}
+                          <ul class="setup-choice-list">
+                            <li>{% trans %}Participants register accounts and form teams{% endtrans %}</li>
+                            <li>{% trans %}If a team member solves a challenge, the entire team receives credit{% endtrans %}</li>
+                            <li>{% trans %}Easier to see which team member solved a challenge{% endtrans %}</li>
+                            <li>{% trans %}May be slightly more difficult to administer{% endtrans %}</li>
+                          </ul>
+                        {% elif radio.data == "users" %}
+                          <ul class="setup-choice-list">
+                            <li>{% trans %}Participants only register an individual account{% endtrans %}</li>
+                            <li>{% trans %}Players can share accounts to form pseudo-teams{% endtrans %}</li>
+                            <li>{% trans %}Easier to organize{% endtrans %}</li>
+                            <li>{% trans %}Difficult to attribute solutions to individual team members{% endtrans %}</li>
+                          </ul>
+                        {% endif %}
+                      </div>
+                    </label>
+                  {% endfor %}
+                </div>
+
+                <div class="setup-actions">
+                  <button type="button" class="btn btn-primary tab-next" data-href="#settings" @click="switchTab">
+                    {% trans %}Next{% endtrans %}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="setup-settings-tab" tabindex="0">
+              <div class="setup-pane">
+                <div class="setup-pane-header">
+                  <p class="eyebrow">{% trans %}Access{% endtrans %}</p>
+                  <h3>{% trans %}Control visibility and access{% endtrans %}</h3>
+                  <p>{% trans %}Decide which areas are public, when registration is open, and how tightly the event is governed.{% endtrans %}</p>
+                </div>
+
+                <div class="setup-grid setup-grid-2">
+                  <div class="mb-3 setup-field">
+                    <div class="setup-field-title">
+                      <b>{{ form.challenge_visibility.label }}</b>
+                      <button
+                        type="button"
+                        class="setup-help"
+                        data-bs-toggle="tooltip"
+                        data-bs-title="{{ form.challenge_visibility.description }}"
+                        aria-label="{{ form.challenge_visibility.description }}"
+                      >
+                        <i class="far fa-question" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    {{ form.challenge_visibility(class="form-select") }}
+                  </div>
+
+                  <div class="mb-3 setup-field">
+                    <div class="setup-field-title">
+                      <b>{{ form.account_visibility.label }}</b>
+                      <button
+                        type="button"
+                        class="setup-help"
+                        data-bs-toggle="tooltip"
+                        data-bs-title="{{ form.account_visibility.description }}"
+                        aria-label="{{ form.account_visibility.description }}"
+                      >
+                        <i class="far fa-question" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    {{ form.account_visibility(class="form-select") }}
+                  </div>
+
+                  <div class="mb-3 setup-field">
+                    <div class="setup-field-title">
+                      <b>{{ form.score_visibility.label }}</b>
+                      <button
+                        type="button"
+                        class="setup-help"
+                        data-bs-toggle="tooltip"
+                        data-bs-title="{{ form.score_visibility.description }}"
+                        aria-label="{{ form.score_visibility.description }}"
+                      >
+                        <i class="far fa-question" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    {{ form.score_visibility(class="form-select") }}
+                  </div>
+
+                  <div class="mb-3 setup-field">
+                    <div class="setup-field-title">
+                      <b>{{ form.registration_visibility.label }}</b>
+                      <button
+                        type="button"
+                        class="setup-help"
+                        data-bs-toggle="tooltip"
+                        data-bs-title="{{ form.registration_visibility.description }}"
+                        aria-label="{{ form.registration_visibility.description }}"
+                      >
+                        <i class="far fa-question" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                    {{ form.registration_visibility(class="form-select") }}
+                  </div>
+                </div>
+
+                <div class="setup-grid setup-grid-2">
+                  <div class="mb-3 setup-field">
+                    <b>{{ form.verify_emails.label(class="form-label") }}</b>
+                    {{ form.verify_emails(class="form-select") }}
+                    <small class="form-text text-muted">{{ form.verify_emails.description }}</small>
+                  </div>
+
+                  <div class="mb-3 setup-field">
+                    <b>{{ form.team_size.label(class="form-label") }}</b>
+                    {{ form.team_size(class="form-select") }}
+                    <small class="form-text text-muted">{{ form.team_size.description }}</small>
+                  </div>
+                </div>
+
+                <div class="setup-actions">
+                  <button type="button" class="btn btn-primary tab-next" data-href="#administration" @click="switchTab">
+                    {% trans %}Next{% endtrans %}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="administration" role="tabpanel" aria-labelledby="setup-administration-tab" tabindex="0">
+              <div class="setup-pane">
+                <div class="setup-pane-header">
+                  <p class="eyebrow">{% trans %}Access{% endtrans %}</p>
+                  <h3>{% trans %}Create the initial operator account{% endtrans %}</h3>
+                  <p>{% trans %}This account becomes the first administrator with full access to the event control panel.{% endtrans %}</p>
+                </div>
+
+                <div class="setup-grid setup-grid-3">
+                  <div class="mb-3">
+                    <b>{{ form.name.label(class="form-label") }}</b>
+                    {{ form.name(class="form-control") }}
+                    <small class="form-text text-muted">{{ form.name.description }}</small>
+                  </div>
+
+                  <div class="mb-3">
+                    <b>{{ form.email.label(class="form-label") }}</b>
+                    {{ form.email(class="form-control") }}
+                    <small class="form-text text-muted">{{ form.email.description }}</small>
+                  </div>
+
+                  <div class="mb-3">
+                    <b>{{ form.password.label(class="form-label") }}</b>
+                    {{ form.password(class="form-control") }}
+                    <small class="form-text text-muted">{{ form.password.description }}</small>
+                  </div>
+                </div>
+
+                <label class="setup-check">
+                  <input class="form-check-input" type="checkbox" value="" id="newsletter-checkbox" checked>
+                  <span>{% trans %}Subscribe email address to the CTFd LLC Newsletter for news and updates{% endtrans %}</span>
+                </label>
+
+                <div class="setup-actions">
+                  <button type="button" class="btn btn-primary tab-next" data-href="#style" @click="switchTab">
+                    {% trans %}Next{% endtrans %}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="style" role="tabpanel" aria-labelledby="setup-style-tab" tabindex="0">
+              <div class="setup-pane">
+                <div class="setup-pane-header">
+                  <p class="eyebrow">{% trans %}Launch{% endtrans %}</p>
+                  <h3>{% trans %}Set the visual entry point{% endtrans %}</h3>
+                  <p>{% trans %}Upload brand assets, choose the active theme, and optionally define the accent color used across the event shell.{% endtrans %}</p>
+                </div>
+
+                <div class="setup-grid setup-grid-3">
+                  <div class="setup-upload mb-3">
+                    <b>{{ form.ctf_logo.label(class="form-label") }}</b>
+                    {{ form.ctf_logo(class="form-control", accept="image/*", **{'@change': 'validateFileSize($event, 128000)'}) }}
+                    <small class="form-text text-muted">{{ form.ctf_logo.description }}</small>
+                  </div>
+
+                  <div class="setup-upload mb-3">
+                    <b>{{ form.ctf_banner.label(class="form-label") }}</b>
+                    {{ form.ctf_banner(class="form-control", accept="image/*", **{'@change': 'validateFileSize($event, 512000)'}) }}
+                    <small class="form-text text-muted">{{ form.ctf_banner.description }}</small>
+                  </div>
+
+                  <div class="setup-upload mb-3">
+                    <b>{{ form.ctf_small_icon.label(class="form-label") }}</b>
+                    {{ form.ctf_small_icon(class="form-control", accept=".png", **{'@change': 'validateFileSize($event, 32000)'}) }}
+                    <small class="form-text text-muted">{{ form.ctf_small_icon.description }}</small>
+                  </div>
+                </div>
+
+                <div class="setup-grid setup-grid-2">
+                  <div class="mb-3">
+                    <b>{{ form.ctf_theme.label(class="form-label") }}</b>
+                    {{ form.ctf_theme(class="form-select") }}
+                    <small class="form-text text-muted">{{ form.ctf_theme.description }}</small>
+                  </div>
+
+                  <div class="mb-3">
+                    <b>{{ form.theme_color.label(class="form-label") }}</b>
+                    <div class="setup-color-row">
+                      {{ form.theme_color(id="config-color-input", class="form-control") }}
+                      <input type="color" id="config-color-picker" class="form-control form-control-color" value="" @input="setThemeColor">
+                      <button type="button" id="config-color-reset" class="btn btn-outline-secondary" @click="resetThemeColor">
+                        {% trans %}Reset{% endtrans %}
+                      </button>
+                    </div>
+                    <small class="form-text text-muted">{{ form.theme_color.description }}</small>
+                  </div>
+                </div>
+
+                <div class="setup-actions">
+                  <button type="button" class="btn btn-primary tab-next" data-href="#datetime" @click="switchTab">
+                    {% trans %}Next{% endtrans %}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="datetime" role="tabpanel" aria-labelledby="setup-datetime-tab" tabindex="0">
+              <div class="setup-pane">
+                <div class="setup-pane-header">
+                  <p class="eyebrow">{% trans %}Launch{% endtrans %}</p>
+                  <h3>{% trans %}Schedule the event window{% endtrans %}</h3>
+                  <p>{% trans %}Convert local input into the UTC timestamps used internally by the platform.{% endtrans %}</p>
+                </div>
+
+                <div class="mb-3">
+                  <b>{{ form.start.label(class="form-label") }}</b>
+                  <div class="setup-grid setup-grid-3">
+                    <div>
+                      <label class="form-label">{% trans %}Date{% endtrans %}</label>
+                      <input class="form-control" id="start-date" type="date" placeholder="yyyy-mm-dd" data-preview="#start" @input="processDateTime('start')" @change="processDateTime('start')"/>
+                    </div>
+                    <div>
+                      <label class="form-label">{% trans %}Time{% endtrans %}</label>
+                      <input class="form-control" id="start-time" type="time" placeholder="hh:mm" data-preview="#start" @input="processDateTime('start')" @change="processDateTime('start')"/>
+                    </div>
+                    <div>
+                      <label class="form-label">{% trans %}UTC Preview{% endtrans %}</label>
+                      {{ form.start(class="form-control", id="start-preview", readonly=True) }}
+                    </div>
+                  </div>
+                  <small class="form-text text-muted">{{ form.start.description }}</small>
+                </div>
+
+                <div class="mb-3">
+                  <b>{{ form.end.label(class="form-label") }}</b>
+                  <div class="setup-grid setup-grid-3">
+                    <div>
+                      <label class="form-label">{% trans %}Date{% endtrans %}</label>
+                      <input class="form-control" id="end-date" type="date" placeholder="yyyy-mm-dd" data-preview="#end" @input="processDateTime('end')" @change="processDateTime('end')"/>
+                    </div>
+                    <div>
+                      <label class="form-label">{% trans %}Time{% endtrans %}</label>
+                      <input class="form-control" id="end-time" type="time" placeholder="hh:mm" data-preview="#end" @input="processDateTime('end')" @change="processDateTime('end')"/>
+                    </div>
+                    <div>
+                      <label class="form-label">{% trans %}UTC Preview{% endtrans %}</label>
+                      {{ form.end(class="form-control", id="end-preview", readonly=True) }}
+                    </div>
+                  </div>
+                  <small class="form-text text-muted">{{ form.end.description }}</small>
+                </div>
+
+                <div class="setup-actions">
+                  <button type="button" class="btn btn-primary tab-next" data-href="#integrations" @click="switchTab">
+                    {% trans %}Next{% endtrans %}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="integrations" role="tabpanel" aria-labelledby="setup-integrations-tab" tabindex="0">
+              <div class="setup-pane">
+                <div class="setup-pane-header">
+                  <p class="eyebrow">{% trans %}Launch{% endtrans %}</p>
+                  <h3>{% trans %}Finalize sharing and external services{% endtrans %}</h3>
+                  <p>{% trans %}Enable participant sharing and optionally connect MajorLeagueCyber before the platform goes live.{% endtrans %}</p>
+                </div>
+
+                <div class="setup-grid setup-grid-2">
+                  <div class="mb-3">
+                    <b>{{ form.social_shares.label(class="form-label") }}</b>
+                    {{ form.social_shares(class="form-select") }}
+                    <small class="form-text text-muted">{{ form.social_shares.description }}</small>
+                  </div>
+
+                  <div class="setup-integration-card">
+                    <p class="eyebrow">{% trans %}MajorLeagueCyber{% endtrans %}</p>
+                    <p>
+                      {% trans %}MajorLeagueCyber (MLC) tracks cybersecurity events and is maintained by the CTFd team.{% endtrans %}
+                    </p>
+                    <button type="button" id="integration-mlc" class="btn btn-secondary w-100" @click="mlcSetup()">
+                      {% trans %}Setup{% endtrans %}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="setup-actions">
+                  {{ form.submit(class="btn btn-primary") }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {{ form.nonce() }}
+        </div>
+      </form>
+      {% endwith %}
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  var STATE = {{ state | tojson }};
+  window.SETUP_TEXT = {
+    configured: {{ _("Already configured") | tojson }},
+    largeFileWarning: {{ _("This image file is larger than %(limit)sKB and may slow page loads. Do you want to keep it?", limit="__LIMIT__") | tojson }},
+  };
+</script>
+{{ Assets.js("assets/js/setup.js") }}
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-hero page-hero-compact">
+    <div class="container">
+      <div class="page-head">
+        <!-- <p class="eyebrow">{% trans %}List{% endtrans %}</p> -->
+        <h1>{% trans %}Teams{% endtrans %}</h1>    
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container">
+      <div class="directory-shell">
+        {% if q and field %}
+          <div class="page-panel directory-search-summary">
+            <p class="eyebrow">{% trans %}Filtered results{% endtrans %}</p>
+            <h2>{% trans %}Teams matching your search{% endtrans %}</h2>
+            <p class="text-muted">
+              {% trans %}Searching for teams with <strong>{{ field }}</strong> matching <strong>{{ q }}</strong>{% endtrans %}
+            </p>
+            <p class="text-muted mb-0">
+              {% trans page=teams.page, total=teams.total %}Page {{ page }} of {{ total }} results{% endtrans %}
+            </p>
+          </div>
+        {% endif %}
+
+        {% with form = Forms.teams.PublicTeamSearchForm(field=field, q=q) %}
+          <form method="GET" class="page-panel directory-search-form">
+            <div>
+              {{ form.field(class="form-select w-100") }}
+            </div>
+
+            <div>
+              {{ form.q(class="form-control w-100", placeholder=form.q.description or _("Search for matching teams")) }}
+            </div>
+
+            <div>
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-search" aria-hidden="true"></i>
+                <span>{% trans %}Search{% endtrans %}</span>
+              </button>
+            </div>
+          </form>
+        {% endwith %}
+
+        <div class="page-panel directory-table-panel">
+        <div class="table-scroll-shell table-scroll-shell-directory">
+        <table class="table table-striped align-middle">
+          <thead>
+          <tr>
+            <th class="text-md-start">{% trans %}Team{% endtrans %}</th>
+            <th class="directory-link-col">{% trans %}Website{% endtrans %}</th>
+            <th class="d-none d-md-table-cell">{% trans %}Affiliation{% endtrans %}</th>
+            <th class="d-none d-md-table-cell">{% trans %}Country{% endtrans %}</th>
+          </tr>
+          </thead>
+          <tbody>
+
+          {% for team in teams.items %}
+            <tr>
+              <td>
+                {% if scores_visible() %}
+                  <a href="{{ url_for('teams.public', team_id=team.id) }}">{{ team.name | truncate(50) }}</a>
+                {% else %}
+                  <span>{{ team.name | truncate(50) }}</span>
+                {% endif %}
+
+                {% if team.bracket_id %}
+                  <span class="badge bg-secondary ms-2">{{ team.bracket.name }}</span>
+                {% endif %}
+
+                {% if team.oauth_id %}
+                  <a href="https://majorleaguecyber.org/t/{{ team.name }}">
+                    <span class="badge bg-primary ms-2">{% trans %}Official{% endtrans %}</span>
+                  </a>
+                {% endif %}
+              </td>
+
+              <td class="directory-link-col">
+                {% if team.website and (team.website.startswith('http://') or team.website.startswith('https://')) %}
+                  <a href="{{ team.website }}" target="_blank" rel="noopener noreferrer" class="external-link-inline">
+                    <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                    <span>{% trans %}Visit{% endtrans %}</span>
+                  </a>
+                {% endif %}
+              </td>
+
+              <td class="d-none d-md-table-cell">
+                {% if team.affiliation %}
+                  <span class="meta-wrap">{{ team.affiliation }}</span>
+                {% endif %}
+              </td>
+
+              <td class="d-none d-md-table-cell">
+                <span>
+                  {% if team.country %}
+                  <i class="flag-{{ team.country.lower() }}"></i>
+                  {{ lookup_country_code(team.country) }}
+                {% endif %}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+
+          </tbody>
+        </table>
+        </div>
+        </div>
+
+    {% if teams.pages > 1 %}
+      {% set page_start = [1, teams.page - 2] | max %}
+      {% set page_end = [teams.pages, teams.page + 2] | min %}
+      <nav class="page-panel directory-pagination" aria-label="{% trans %}Teams pagination{% endtrans %}">
+        <p class="directory-pagination-summary">
+          {% trans page=teams.page, total=teams.pages %}Page {{ page }} of {{ total }}{% endtrans %}
+        </p>
+
+        <div class="directory-pagination-nav">
+          {% if teams.page != 1 %}
+            <a class="pagination-link pagination-link-direction" href="{{ prev_page }}" aria-label="{% trans %}Go to previous page{% endtrans %}">
+              {% trans %}Previous{% endtrans %}
+            </a>
+          {% endif %}
+
+          {% if page_start > 1 %}
+            <a class="pagination-link" href="{{ url_for('teams.listing', page=1, q=q, field=field) }}">1</a>
+            {% if page_start > 2 %}
+              <span class="pagination-ellipsis" aria-hidden="true">…</span>
+            {% endif %}
+          {% endif %}
+
+          {% for page in range(page_start, page_end + 1) %}
+            {% if page == teams.page %}
+              <span class="pagination-link pagination-link-current" aria-current="page">{{ page }}</span>
+            {% else %}
+              <a class="pagination-link" href="{{ url_for('teams.listing', page=page, q=q, field=field) }}">{{ page }}</a>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_end < teams.pages %}
+            {% if page_end < teams.pages - 1 %}
+              <span class="pagination-ellipsis" aria-hidden="true">…</span>
+            {% endif %}
+            <a class="pagination-link" href="{{ url_for('teams.listing', page=teams.pages, q=q, field=field) }}">{{ teams.pages }}</a>
+          {% endif %}
+
+          {% if teams.next_num %}
+            <a class="pagination-link pagination-link-direction" href="{{ next_page }}" aria-label="{% trans %}Go to next page{% endtrans %}">
+              {% trans %}Next{% endtrans %}
+            </a>
+          {% endif %}
+        </div>
+      </nav>
+    {% endif %}
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  {{ Assets.js("assets/js/teams/list.js") }}
+{% endblock %}

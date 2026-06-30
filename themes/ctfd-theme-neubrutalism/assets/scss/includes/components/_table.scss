@@ -1,0 +1,67 @@
+// Center text in table cells, except the first cell
+.table tr > :not(:first-child) {
+  text-align: center;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.72rem 0.9rem;
+  border-color: var(--ctfd-outline);
+  vertical-align: middle;
+}
+
+// Add some padding from the edge of table
+.table > thead > tr > :first-child {
+  padding-left: 1rem;
+}
+
+// Do not wrap text in table headers
+.table > thead > tr > th {
+  white-space: nowrap;
+  color: var(--ctfd-text-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.table-scroll-shell {
+  overflow-x: auto;
+  
+  .table {
+    min-width: 34rem;
+
+    & > thead > tr > th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: color-mix(in srgb, var(--ctfd-surface-low) 84%, black);
+    }
+
+    & > :not(caption) > * > * {
+      background: color-mix(in srgb, var(--ctfd-surface-low) 92%, white);
+      border-bottom-color: var(--ctfd-field-border);
+      color: inherit;
+    }
+  }
+}
+
+
+.table-scroll-shell-directory .table {
+  min-width: 42rem;
+}
+
+.table-scroll-shell-scoreboard .table {
+  min-width: 32rem;
+}
+
+.table-scroll-shell-profile .table {
+  min-width: 34rem;
+}
+
+.table-scroll-shell .table-responsive {
+  border-radius: inherit;
+}

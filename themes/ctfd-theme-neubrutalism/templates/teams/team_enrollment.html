@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-hero page-hero-compact">
+    <div class="container">
+      <div class="page-head">
+        <p class="eyebrow">{% trans %}Team setup{% endtrans %}</p>
+        <h1>{% trans %}Team{% endtrans %}</h1>
+        <p class="lede">{% trans ctf_name=Configs.ctf_name %}Welcome to {{ ctf_name }}. To participate, you need to join an existing team or create a new one.{% endtrans %}</p>
+      </div>
+    </div>
+  </section>
+  <section class="page-section">
+    <div class="container">
+      <div class="page-panel form-panel">
+
+    {% if integrations.mlc() %}
+      <div class="row">
+        <div class="col-md-6 offset-md-3 text-center">
+          <a class="btn btn-primary w-100" href="{{ url_for('auth.oauth_login') }}">{% trans %}Play with Official Team{% endtrans %}</a>
+        </div>
+      </div>
+      <div class="row">
+        <div class="mt-3 col-md-3 offset-md-3 text-center">
+          <a class="btn btn-outline-info w-100" href="{{ url_for('teams.join') }}">{% trans %}Join Unofficial Team{% endtrans %}</a>
+        </div>
+        <div class="mt-3 col-md-3 text-center">
+          <a class="btn btn-outline-info w-100" href="{{ url_for('teams.new') }}">{% trans %}Create Unofficial Team{% endtrans %}</a>
+        </div>
+      </div>
+    {% else %}
+      <div class="row">
+        <div class="mt-3 col-sm-4 col-md-3 offset-sm-2 offset-md-3 text-center">
+          <a class="btn btn-primary w-100" href="{{ url_for('teams.join') }}">{% trans %}Join Team{% endtrans %}</a>
+        </div>
+        <div class="mt-3 col-sm-4 col-md-3 text-center">
+          <a class="btn btn-primary w-100" href="{{ url_for('teams.new') }}">{% trans %}Create Team{% endtrans %}</a>
+        </div>
+      </div>
+    {% endif %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

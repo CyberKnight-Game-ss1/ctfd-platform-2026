@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-hero page-hero-compact">
+    <div class="container">
+      <div class="page-head profile-head">
+        <p class="eyebrow">{% trans %}Team{% endtrans %}</p>
+        <h1 id="team-id" data-ctfd-team-id="{{ team.id }}">{{ team.name }}</h1>
+
+        <div class="profile-badges">
+          {% if team.oauth_id %}
+            <a href="https://majorleaguecyber.org/t/{{ team.name }}">
+              <span class="badge bg-primary rounded-pill">{% trans %}Official{% endtrans %}</span>
+            </a>
+          {% endif %}
+
+          {% if team.affiliation %}
+            <span class="badge bg-primary rounded-pill">{{ team.affiliation }}</span>
+          {% endif %}
+
+          {% if team.country %}
+            <span class="badge bg-primary rounded-pill">
+              <i class="flag-{{ team.country.lower() }}"></i>
+              {{ lookup_country_code(team.country) }}
+            </span>
+          {% endif %}
+
+          {% if team.bracket_id %}
+            <span class="badge bg-secondary">{{ team.bracket.name }}</span>
+          {% endif %}
+        </div>
+
+        {% if team.fields %}
+          <div class="profile-fields">
+            {% for field in team.fields %}
+              <p><strong>{{ field.name }}:</strong> {{ field.value }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="profile-stats">
+          <div class="profile-stat">
+            <span>{% trans %}Place{% endtrans %}</span>
+            <strong>{% if scores_visible() and place %}{{ place }}{% else %}&mdash;{% endif %}</strong>
+          </div>
+          <div class="profile-stat">
+            <span>{% trans %}Points{% endtrans %}</span>
+            <strong>{% if score %}{{ score }}{% else %}0{% endif %}</strong>
+          </div>
+        </div>
+
+        {% if team.website and (team.website.startswith('http://') or team.website.startswith('https://')) %}
+          <div class="profile-links">
+            <a href="{{ team.website }}" target="_blank" rel="noopener noreferrer" class="profile-link">
+              <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+              <span>{% trans %}Visit website{% endtrans %}</span>
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container profile-content">
+    {% include "components/errors.html" %}
+
+    <section class="profile-section-panel">
+        <h3 class="profile-section-heading">{% trans %}Members{% endtrans %}</h3>
+        <div class="profile-table-wrap table-scroll-shell table-scroll-shell-profile">
+        <table class="table table-striped align-middle">
+          <thead>
+          <tr>
+            <th>{% trans %}User Name{% endtrans %}</th>
+            <th>{% trans %}Score{% endtrans %}</th>
+          </tr>
+          </thead>
+          <tbody>
+          {% for member in team.members %}
+            <tr>
+              <td>
+                <a href="{{ url_for('users.public', user_id=member.id) }}">
+                  {{ member.name }}
+                </a>
+                {% if member.bracket_id %}
+                  <span class="badge bg-secondary ms-2">{{ member.bracket.name }}</span>
+                {% endif %}
+                {% if team.captain_id == member.id %}
+                  <span class="badge bg-primary ms-2">{% trans %}Captain{% endtrans %}</span>
+                {% endif %}
+              </td>
+              <td>{{ member.score }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+    </section>
+
+    {% if solves or awards %}
+      {% if awards %}
+        <section class="profile-section-panel">
+          <h3 class="profile-section-heading">{% trans %}Awards{% endtrans %}</h3>
+          <div class="profile-awards-grid">
+
+          {% for award in awards %}
+            <article class="profile-award-card">
+              <p>
+                <i class="award-icon award-{{ award.icon }} fa-2x"></i> <br>
+                <strong>{{ award.name }}</strong>
+              </p>
+
+              {% if award.category %}
+                <p>{{ award.category }}</p>
+              {% endif %}
+
+              {% if award.description %}
+                <p>{{ award.description }}</p>
+              {% endif %}
+
+              <p>{{ award.value }}</p>
+            </article>
+          {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="profile-section-panel">
+          <h3 class="profile-section-heading">{% trans %}Solves{% endtrans %}</h3>
+          <div class="profile-table-wrap table-scroll-shell table-scroll-shell-profile">
+          <table class="table table-striped align-middle">
+            <thead>
+            <tr>
+              <th class="text-center">{% trans %}Challenge{% endtrans %}</th>
+              <th class="d-none d-md-block d-lg-block">{% trans %}Category{% endtrans %}</th>
+              <th>{% trans %}Value{% endtrans %}</th>
+              <th>{% trans %}Time{% endtrans %}</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for solve in solves %}
+              <tr>
+                <td class="text-center">
+                  <a href="{{ url_for('challenges.listing') }}#{{ solve.challenge.name }}-{{ solve.challenge.id }}">
+                    {{ solve.challenge.name }}
+                  </a>
+                </td>
+                <td class="d-none d-md-block d-lg-block">{{ solve.challenge.category }}</td>
+                <td>{{ solve.challenge.value }}</td>
+                <td class="solve-time">
+                  <span data-time="{{ solve.date | isoformat }}"></span>
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          </div>
+      </section>
+
+      <section class="profile-section-panel profile-chart-grid" x-data="TeamGraphs">
+        <div class="profile-chart-panel">
+          <h3>{% trans %}Attempt rate{% endtrans %}</h3>
+          <div class="progress">
+            <div
+              class="progress-bar profile-progress-bar profile-progress-bar-solve"
+              role="progressbar"
+              :style="{ width: `${getSolvePercentage()}%` }"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-valuenow="getSolvePercentageValue()"
+              :aria-valuetext="`${window.STATS_TEXT.solves}: ${getSolvePercentage()}%`"
+              :aria-label="`${window.STATS_TEXT.solves}: ${getSolvePercentage()}%`"
+            >
+            </div>
+            <div
+              class="progress-bar profile-progress-bar profile-progress-bar-fail"
+              role="progressbar"
+              :style="{ width: `${getFailPercentage()}%` }"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-valuenow="getFailPercentageValue()"
+              :aria-valuetext="`${window.STATS_TEXT.fails}: ${getFailPercentage()}%`"
+              :aria-label="`${window.STATS_TEXT.fails}: ${getFailPercentage()}%`"
+            >
+            </div>
+          </div>
+          <div class="profile-legend">
+            <div class="profile-legend-item">
+              <span class="profile-legend-swatch profile-legend-swatch-solve" aria-hidden="true"></span>
+              <small x-text="`${window.STATS_TEXT.solves} (${getSolvePercentage()}%)`"></small>
+            </div>
+            <div class="profile-legend-item">
+              <span class="profile-legend-swatch profile-legend-swatch-fail" aria-hidden="true"></span>
+              <small x-text="`${window.STATS_TEXT.fails} (${getFailPercentage()}%)`"></small>
+            </div>
+          </div>
+        </div>
+        <div class="profile-chart-panel">
+          <h3>{% trans %}Category breakdown{% endtrans %}</h3>
+          <div class="progress">
+            <template x-for="category in getCategoryBreakdown()" :key="category.name">
+              <div
+                class="progress-bar profile-progress-bar profile-progress-bar-category"
+                :class="category.toneClass"
+                role="progressbar"
+                :style="{ width: `${category.percent}%` }"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                :aria-valuenow="Number(category.percent)"
+                :aria-valuetext="`${category.name}: ${category.percent}%`"
+                :aria-label="`${category.name}: ${category.percent}%`"
+              >
+              </div>
+            </template>
+          </div>
+          <div class="profile-legend">
+            <template x-for="category in getCategoryBreakdown()" :key="category.name">
+              <div class="profile-legend-item">
+                <span class="profile-legend-swatch profile-legend-swatch-category" :class="category.toneClass" aria-hidden="true"></span>
+                <small x-text="`${category.name} (${category.percent}%)`"></small>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <div class="profile-chart-panel profile-chart-panel-full">
+          <h3>{% trans %}Score history{% endtrans %}</h3>
+          <div id="score-graph" x-ref="scoregraph" class="w-100 d-flex align-items-center">
+            <div class="text-center w-100">
+              <i class="fas fa-circle-notch fa-spin fa-3x fa-fw spinner"></i>
+            </div>
+          </div>
+        </div>
+      </section>
+    {% else %}
+      <div class="empty-state">
+        <p class="eyebrow">{% trans %}No activity{% endtrans %}</p>
+        <h3>{% trans %}No solves yet{% endtrans %}</h3>
+      </div>
+    {% endif %}
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+      window.STATS_TEXT = {
+        solves: {{ _("Solves") | tojson }},
+        fails: {{ _("Fails") | tojson }},
+      };
+      window.TEAM =
+      {{
+        {
+           'type': 'team',
+           'id': team.id,
+           'name': team.name,
+           'account_id': team.id,
+        } | tojson
+      }}
+  </script>
+
+  {{ Assets.js("assets/js/teams/public.js") }}
+{% endblock %}

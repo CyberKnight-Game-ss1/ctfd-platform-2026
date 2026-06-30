@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-hero page-hero-compact">
+    <div class="container">
+      <div class="page-head">
+        <p class="eyebrow">{% trans %}Email{% endtrans %}</p>
+        <h1>{% trans %}Confirm{% endtrans %}</h1>
+        <p class="lede">{% trans %}Verify your account email so you can receive event updates and complete registration flows.{% endtrans %}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container">
+      <div class="page-panel auth-copy form-panel">
+        {% include "components/errors.html" %}
+
+        {% if request.args.get('flow') == "init" %}
+          <h5 class="text-center">
+            {% trans %}To send a confirmation email to your email address, please click the button below.{% endtrans %}
+          </h5>
+          <br>
+          <h5 class="text-center">
+            {% trans %}Please click the link in that email to confirm your account.{% endtrans %}
+          </h5>
+          <h5 class="text-center">
+            {% trans %}If the email doesn’t arrive, check your spam folder or contact an administrator to manually verify your account.{% endtrans %}
+          </h5>
+        {% else%}
+          <h5 class="text-center">
+            {% trans %}We've sent a confirmation email to your email address.{% endtrans %}
+          </h5>
+          <br>
+          <h5 class="text-center">
+            {% trans %}Please click the link in that email to confirm your account.{% endtrans %}
+          </h5>
+          <h5 class="text-center">
+            {% trans %}If the email doesn’t arrive, check your spam folder or contact an administrator to manually verify your account.{% endtrans %}
+          </h5>
+        {% endif %}
+
+        <hr>
+
+        {% with form = Forms.auth.ConfirmForm() %}
+          <form method="POST" action="{{ url_for('auth.confirm') }}">
+            <div class="directory-search-form">
+              <div>
+                {{ form.submit(class="btn btn-primary w-100 p-2") }}
+              </div>
+              <div>
+                <a href="{{ url_for('views.settings') }}" class="btn btn-secondary w-100 p-2">
+                  {% trans %}Change Email Address{% endtrans %}
+                </a>
+              </div>
+              {{ form.nonce() }}
+            </div>
+          </form>
+        {% endwith %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

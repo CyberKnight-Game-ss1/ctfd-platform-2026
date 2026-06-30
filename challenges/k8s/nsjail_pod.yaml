@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pwn-challenge-1
+  namespace: pwn
+  labels:
+    app: pwn-challenge-1
+spec:
+  containers:
+  - name: challenge
+    image: ubuntu:22.04
+    command: ["/bin/sh", "-c", "apt update && apt install -y nsjail && sleep infinity"]
+    # In reality, this image should have nsjail pre-installed and configured.
+    # We would run the challenge binary via nsjail:
+    # command: ["nsjail", "--mode", "l", "--port", "1337", "--chroot", "/", "--user", "1000", "--group", "1000", "--cgroup_mem_max", "268435456", "--rlimit_cpu", "10", "--", "/challenge"]
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsUser: 1000 # Run as non-root
+      capabilities:
+        drop:
+          - ALL
