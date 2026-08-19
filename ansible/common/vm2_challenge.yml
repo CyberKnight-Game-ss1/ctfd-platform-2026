@@ -1,0 +1,132 @@
+---
+# ============================================================
+# vm2_challenge.yml - DÙNG CHUNG cho cả GCP và AWS
+# Các tác vụ này hoàn toàn không phụ thuộc vào cloud provider:
+#   - Cài Docker
+#   - Chạy docker-socket-proxy với mTLS
+#   - Cài tcpdump + tạo systemd service để rotate PCAP
+#   - Cài K3s (Lightweight Kubernetes)
+# ============================================================
+- name: Configure VM2 - Challenge Server (Cloud-Agnostic)
+  hosts: vm2_challenge
+  become: yes
+  vars:
+    k3s_version: "v1.28.2+k3s1"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - tcpdump
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - apparmor
+          - apparmor-utils
+        state: present
+
+    # Cài Docker bằng official install script (không dùng apt docker.io vì outdated)
+    - name: Install Docker Engine
+      shell: curl -fsSL https://get.docker.com | sh
+      args:
+        creates: /usr/bin/docker
+
+    - name: Enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    # docker-socket-proxy chạy như một container, expose Docker API qua port 2376 với mTLS
+    # Chứng chỉ mTLS được copy bởi ansible/common/mtls_setup.yml
+    - name: Run docker-socket-proxy với mTLS
+      docker_container:
+        name: docker-proxy
+        image: tecnativa/docker-socket-proxy
+        state: started
+        restart_policy: always
+        privileged: true
+        ports:
+          - "2376:2376"
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /etc/docker/certs.d:/run/secrets:ro
+        env:
+          CONTAINERS: "1"
+          POST: "0"
+          START: "1"
+          STOP: "1"
+          RESTART: "1"
+          INFO: "1"
+          TLS_CERT_PATH: /run/secrets/server-cert.pem
+          TLS_KEY_PATH: /run/secrets/server-key.pem
+          TLS_CA_PATH: /run/secrets/ca.pem
+          REQUIRE_TLS: "1"
+          # Ghi chú: port 2376 chỉ được mở cho VM1 qua Firewall/Security Group
+          # Không cần bind vào IP cụ thể vì Firewall đã chặn external traffic
+
+    # ============================================================
+    # tcpdump - Capture traffic trong Docker network để phân tích sau thi đấu
+    # Rotate mỗi 30 phút, giữ tối đa 48 file (24 giờ gần nhất)
+    # ============================================================
+    - name: Tạo script tcpdump capture
+      copy:
+        dest: /usr/local/bin/capture_ctf_traffic.sh
+        mode: '0755'
+        content: |
+          #!/bin/bash
+          # Capture traffic trên docker0 interface
+          # Rotate mỗi 30 phút (-G 1800), giữ tối đa 48 files = 24 giờ (-W 48)
+          mkdir -p /var/log/ctf-pcap
+          exec tcpdump -i docker0 \
+            -w '/var/log/ctf-pcap/%Y%m%d-%H%M%S.pcap' \
+            -G 1800 \
+            -W 48 \
+            -Z root
+
+    - name: Tạo systemd service cho tcpdump
+      copy:
+        dest: /etc/systemd/system/ctf-tcpdump.service
+        content: |
+          [Unit]
+          Description=CTF Packet Capture (docker0)
+          After=network.target docker.service
+          Requires=docker.service
+
+          [Service]
+          ExecStart=/usr/local/bin/capture_ctf_traffic.sh
+          Restart=on-failure
+          RestartSec=5
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable và start tcpdump service
+      systemd:
+        name: ctf-tcpdump
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    # ============================================================
+    # K3s - Lightweight Kubernetes cho Phase 3 challenges
+    # Dùng nsjail bên trong Pod để sandbox từng challenge instance
+    # ============================================================
+    - name: Install K3s
+      shell: "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION={{ k3s_version }} sh -"
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Chờ K3s node sẵn sàng
+      shell: "k3s kubectl get nodes | grep ' Ready'"
+      register: k3s_ready
+      retries: 12
+      delay: 10
+      until: k3s_ready.rc == 0

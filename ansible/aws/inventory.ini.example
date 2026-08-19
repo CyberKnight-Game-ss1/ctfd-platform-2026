@@ -1,0 +1,21 @@
+# Inventory Template cho AWS
+# Điền IP sau khi chạy: cd terraform/aws && terraform output
+#
+# Cách lấy IP:
+#   VM1: terraform output vm1_web_public_ip
+#   VM2: terraform output vm2_challenge_public_ip
+#
+# LƯU Ý: Có thể SSH qua SSM Session Manager mà không cần mở port 22:
+#   aws ssm start-session --target <instance-id>
+# Trong trường hợp đó không cần inventory IP, dùng SSM plugin cho SSH:
+#   ansible_ssh_common_args='-o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"'
+
+[vm1_web]
+ctf-vm1-web ansible_host=<VM1_PUBLIC_IP> ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[vm2_challenge]
+ctf-vm2-challenge ansible_host=<VM2_PUBLIC_IP> ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+aws_region=ap-southeast-1

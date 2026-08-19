@@ -1,7 +1,10 @@
 ---
-- name: Configure VM1 (Web and Scoreboard)
+- name: Configure VM1 - Web Server (GCP)
   hosts: vm1_web
   become: yes
+  vars:
+    ctfd_dir: /opt/ctfd
+
   tasks:
     - name: Update apt cache
       apt:
@@ -14,25 +17,31 @@
           - nginx
           - docker.io
           - docker-compose
+          - python3-pip
         state: present
 
     - name: Create CTFd directories
       file:
         path: "{{ item }}"
         state: directory
+        owner: "1001"
+        group: "1001"
         mode: '0755'
       with_items:
-        - /opt/ctfd
-        - /opt/ctfd/themes
+        - "{{ ctfd_dir }}"
+        - "{{ ctfd_dir }}/themes"
+        - "{{ ctfd_dir }}/uploads"    # QUAN TRỌNG: phải thuộc UID 1001 (user ctfd trong container)
+        - "{{ ctfd_dir }}/logs"
+        - "{{ ctfd_dir }}/redis"
 
     - name: Copy custom themes
       copy:
-        src: ../themes/
-        dest: /opt/ctfd/themes/
+        src: ../../themes/
+        dest: "{{ ctfd_dir }}/themes/"
 
-    - name: Create docker-compose.yml for CTFd and Redis
+    - name: Create docker-compose.yml cho CTFd + Redis
       copy:
-        dest: /opt/ctfd/docker-compose.yml
+        dest: "{{ ctfd_dir }}/docker-compose.yml"
         content: |
           version: '3'
           services:
@@ -42,7 +51,7 @@
               ports:
                 - "8000:8000"
               environment:
-                - SECRET_KEY=generate_me_randomly_in_prod
+                - SECRET_KEY={{ ctfd_secret_key | default('change_me_in_production') }}
                 - UPLOAD_FOLDER=/var/uploads
                 - DATABASE_URL=${DATABASE_URL}
                 - REDIS_URL=redis://cache:6379
@@ -52,27 +61,25 @@
                 - ERROR_LOG=-
                 - REVERSE_PROXY=True
               volumes:
-                - /opt/ctfd/logs:/var/log/CTFd
-                - /opt/ctfd/uploads:/var/uploads
-                - /opt/ctfd/themes/ctfd-theme-neubrutalism:/opt/CTFd/CTFd/themes/ctfd-theme-neubrutalism
-                - /opt/ctfd/themes/m0xblood-ctfd-theme/m0xblood:/opt/CTFd/CTFd/themes/m0xblood
-                - /opt/ctfd/themes/ctfd-neon-theme:/opt/CTFd/CTFd/themes/ctfd-neon-theme
+                - {{ ctfd_dir }}/logs:/var/log/CTFd
+                - {{ ctfd_dir }}/uploads:/var/uploads
+                - {{ ctfd_dir }}/themes/ctfd-theme-neubrutalism:/opt/CTFd/CTFd/themes/ctfd-theme-neubrutalism
               depends_on:
                 - cache
-            
+
             cache:
               image: redis:4
               restart: always
               volumes:
-                - /opt/ctfd/redis:/data
+                - {{ ctfd_dir }}/redis:/data
 
             worker:
               build: .
               user: root
               restart: always
-              command: [ "opt/CTFd/ping.sh", "redis:6379", "worker" ]
+              command: ["opt/CTFd/ping.sh", "redis:6379", "worker"]
               environment:
-                - SECRET_KEY=generate_me_randomly_in_prod
+                - SECRET_KEY={{ ctfd_secret_key | default('change_me_in_production') }}
                 - UPLOAD_FOLDER=/var/uploads
                 - DATABASE_URL=${DATABASE_URL}
                 - REDIS_URL=redis://cache:6379
@@ -82,18 +89,28 @@
                 - ERROR_LOG=-
                 - REVERSE_PROXY=True
               volumes:
-                - /opt/ctfd/logs:/var/log/CTFd
-                - /opt/ctfd/uploads:/var/uploads
+                - {{ ctfd_dir }}/logs:/var/log/CTFd
+                - {{ ctfd_dir }}/uploads:/var/uploads
               depends_on:
                 - ctfd
                 - cache
 
+    # Lấy DATABASE_URL từ GCP Secret Manager
+    - name: Lấy DATABASE_URL từ GCP Secret Manager
+      shell: >
+        gcloud secrets versions access latest --secret="ctfd-db-connection"
+      register: db_url_result
+      when: db_url is not defined
+
+    - name: Set db_url từ Secret Manager nếu chưa có
+      set_fact:
+        db_url: "{{ db_url_result.stdout }}"
+      when: db_url is not defined and db_url_result is defined
+
     - name: Start CTFd via docker-compose
-      # In reality, ${DATABASE_URL} is fetched from Secret Manager via startup script or env var injected by ansible
-      # Here we assume it's passed as an extra var `db_url`
-      shell: "DATABASE_URL={{ db_url | default('sqlite:////opt/ctfd/ctfd.db') }} docker-compose up -d"
+      shell: "DATABASE_URL='{{ db_url }}' docker-compose up -d"
       args:
-        chdir: /opt/ctfd
+        chdir: "{{ ctfd_dir }}"
 
     - name: Configure Nginx as Reverse Proxy
       copy:
@@ -102,7 +119,7 @@
           server {
               listen 80 default_server;
               client_max_body_size 200M;
-              
+
               # Proxy to CTFd
               location / {
                   proxy_pass http://127.0.0.1:8000;
@@ -112,16 +129,17 @@
                   proxy_set_header X-Forwarded-Proto $scheme;
               }
           }
-          
+
     - name: Restart Nginx
       service:
         name: nginx
         state: restarted
+        enabled: yes
 
-    # Google Cloud Logging agent is installed by default on GCP images,
-    # but we need to configure it to read nginx access logs if not using structured logging.
-    # The simplest way is to ensure nginx logs to syslog or use Ops Agent.
-    - name: Install Google Cloud Ops Agent for Logging
-      shell: "curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh && bash add-google-cloud-ops-agent-repo.sh --also-install"
+    # Google Cloud Ops Agent dùng để đẩy Nginx logs về Cloud Logging
+    - name: Install Google Cloud Ops Agent
+      shell: >
+        curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh &&
+        bash add-google-cloud-ops-agent-repo.sh --also-install
       args:
         creates: /opt/google-cloud-ops-agent/bin/google_cloud_ops_agent_engine

@@ -1,0 +1,17 @@
+# Inventory Template cho GCP
+# Điền IP sau khi chạy: cd terraform/gcp && terraform output
+#
+# Cách lấy IP:
+#   VM1: terraform output vm1_web_public_ip
+#   VM2: terraform output vm2_challenge_public_ip
+
+[vm1_web]
+ctf-vm1-web ansible_host=<VM1_PUBLIC_IP> ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[vm2_challenge]
+ctf-vm2-challenge ansible_host=<VM2_PUBLIC_IP> ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+# Không cần đặt biến này nếu dùng gcloud ssh tunnel
+# ansible_ssh_common_args='-o StrictHostKeyChecking=no'

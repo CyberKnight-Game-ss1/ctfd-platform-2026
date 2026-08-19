@@ -6,7 +6,7 @@ variable "project_id" {
 variable "region" {
   description = "The default GCP region"
   type        = string
-  default     = "asia-southeast1" # Singapore is usually good for latency in SEA
+  default     = "asia-southeast1" # Singapore - latency tốt cho SEA
 }
 
 variable "zone" {
@@ -16,7 +16,7 @@ variable "zone" {
 }
 
 variable "cloudflare_ips" {
-  description = "Cloudflare IPv4 ranges"
+  description = "Cloudflare IPv4 ranges (dùng để giới hạn traffic vào VM)"
   type        = list(string)
   default     = [
     "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
@@ -27,18 +27,18 @@ variable "cloudflare_ips" {
 }
 
 variable "db_password" {
-  description = "The database password for CTFd"
+  description = "Password cho user 'ctfd' trên Cloud SQL PostgreSQL"
   type        = string
   sensitive   = true
 }
 
 variable "ctf_domain" {
-  description = "The domain name for the CTF"
+  description = "Tên miền của cuộc thi CTF (ví dụ: cyberknightgame.site)"
   type        = string
 }
 
 variable "is_practice_mode" {
-  description = "Set to true to use spot/preemptible instances for VM2"
+  description = "Set true để dùng Spot/Preemptible instance cho VM2 (tiết kiệm chi phí luyện tập)"
   type        = bool
   default     = true
 }

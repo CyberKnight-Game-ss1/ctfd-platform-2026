@@ -1,22 +1,27 @@
+# Service Account dùng chung cho cả 2 VM
 resource "google_service_account" "vm_sa" {
   account_id   = "ctf-vm-sa"
   display_name = "CTF VM Service Account"
 }
 
-# Allow VMs to write logs to Cloud Logging
+# Cho phép VM ghi logs lên Cloud Logging
 resource "google_project_iam_member" "vm_sa_logging" {
   project = var.project_id
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.vm_sa.email}"
 }
 
-# Allow SA to stop/start instances via Scheduler
+# Cho phép Service Account dừng/khởi động instances qua Cloud Scheduler
 resource "google_project_iam_member" "vm_sa_compute_admin" {
   project = var.project_id
   role    = "roles/compute.instanceAdmin.v1"
   member  = "serviceAccount:${google_service_account.vm_sa.email}"
 }
 
+# ============================================================
+# VM1 - Web Server (CTFd + Redis + Nginx)
+# Machine type e2-medium: 2 vCPU, 4 GB RAM
+# ============================================================
 resource "google_compute_instance" "vm1_web" {
   name         = "ctf-vm1-web"
   machine_type = "e2-medium"
@@ -27,14 +32,15 @@ resource "google_compute_instance" "vm1_web" {
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
-      size  = 30
+      size  = 30 # GB
     }
   }
 
   network_interface {
     subnetwork = google_compute_subnetwork.ctf_subnet.id
     access_config {
-      # Ephemeral public IP, Cloudflare proxy will forward to this IP
+      # Tự động gán Ephemeral public IP
+      # Cloudflare proxy sẽ forward traffic đến IP này
     }
   }
 
@@ -43,12 +49,17 @@ resource "google_compute_instance" "vm1_web" {
     scopes = ["cloud-platform"]
   }
 
-  # Ensure user adds their SSH key to project metadata or OS login
+  # Thêm SSH key vào project metadata hoặc bật OS Login thay vì hardcode ở đây
   # metadata = {
   #   ssh-keys = "ubuntu:${file("~/.ssh/id_rsa.pub")}"
   # }
 }
 
+# ============================================================
+# VM2 - Challenge Server (Docker + K3s + CTFd Whale)
+# Machine type e2-standard-2: 2 vCPU, 8 GB RAM
+# Dùng Spot/Preemptible khi is_practice_mode = true để tiết kiệm chi phí
+# ============================================================
 resource "google_compute_instance" "vm2_challenge" {
   name         = "ctf-vm2-challenge"
   machine_type = "e2-standard-2"
@@ -59,7 +70,7 @@ resource "google_compute_instance" "vm2_challenge" {
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
-      size  = 50
+      size  = 50 # GB - cần nhiều dung lượng cho Docker images của challenges
     }
   }
 
@@ -76,8 +87,8 @@ resource "google_compute_instance" "vm2_challenge" {
   }
 
   scheduling {
-    preemptible                 = var.is_practice_mode
-    automatic_restart           = !var.is_practice_mode
-    provisioning_model          = var.is_practice_mode ? "SPOT" : "STANDARD"
+    preemptible        = var.is_practice_mode
+    automatic_restart  = !var.is_practice_mode
+    provisioning_model = var.is_practice_mode ? "SPOT" : "STANDARD"
   }
 }

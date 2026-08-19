@@ -1,0 +1,200 @@
+---
+- name: Configure VM1 - Web Server (AWS)
+  hosts: vm1_web
+  become: yes
+  vars:
+    ctfd_dir: /opt/ctfd
+    ssm_db_param: "/ctfd/database-url"   # Tên SSM Parameter Store lưu DATABASE_URL
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - nginx
+          - docker.io
+          - docker-compose
+          - python3-pip
+          - unzip
+        state: present
+
+    - name: Install AWS CLI v2
+      shell: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+        unzip -q /tmp/awscliv2.zip -d /tmp/
+        /tmp/aws/install
+        rm -rf /tmp/aws /tmp/awscliv2.zip
+      args:
+        creates: /usr/local/bin/aws
+
+    - name: Create CTFd directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "1001"
+        group: "1001"
+        mode: '0755'
+      with_items:
+        - "{{ ctfd_dir }}"
+        - "{{ ctfd_dir }}/themes"
+        - "{{ ctfd_dir }}/uploads"    # QUAN TRỌNG: phải thuộc UID 1001 (user ctfd trong container)
+        - "{{ ctfd_dir }}/logs"
+        - "{{ ctfd_dir }}/redis"
+
+    - name: Copy custom themes
+      copy:
+        src: ../../themes/
+        dest: "{{ ctfd_dir }}/themes/"
+
+    - name: Create docker-compose.yml cho CTFd + Redis
+      copy:
+        dest: "{{ ctfd_dir }}/docker-compose.yml"
+        content: |
+          version: '3'
+          services:
+            ctfd:
+              image: ctfd/ctfd:latest
+              restart: always
+              ports:
+                - "8000:8000"
+              environment:
+                - SECRET_KEY={{ ctfd_secret_key | default('change_me_in_production') }}
+                - UPLOAD_FOLDER=/var/uploads
+                - DATABASE_URL=${DATABASE_URL}
+                - REDIS_URL=redis://cache:6379
+                - WORKERS=4
+                - LOG_FOLDER=/var/log/CTFd
+                - ACCESS_LOG=-
+                - ERROR_LOG=-
+                - REVERSE_PROXY=True
+              volumes:
+                - {{ ctfd_dir }}/logs:/var/log/CTFd
+                - {{ ctfd_dir }}/uploads:/var/uploads
+                - {{ ctfd_dir }}/themes/ctfd-theme-neubrutalism:/opt/CTFd/CTFd/themes/ctfd-theme-neubrutalism
+              depends_on:
+                - cache
+
+            cache:
+              image: redis:4
+              restart: always
+              volumes:
+                - {{ ctfd_dir }}/redis:/data
+
+            worker:
+              build: .
+              user: root
+              restart: always
+              command: ["opt/CTFd/ping.sh", "redis:6379", "worker"]
+              environment:
+                - SECRET_KEY={{ ctfd_secret_key | default('change_me_in_production') }}
+                - UPLOAD_FOLDER=/var/uploads
+                - DATABASE_URL=${DATABASE_URL}
+                - REDIS_URL=redis://cache:6379
+                - WORKERS=1
+                - LOG_FOLDER=/var/log/CTFd
+                - ACCESS_LOG=-
+                - ERROR_LOG=-
+                - REVERSE_PROXY=True
+              volumes:
+                - {{ ctfd_dir }}/logs:/var/log/CTFd
+                - {{ ctfd_dir }}/uploads:/var/uploads
+              depends_on:
+                - ctfd
+                - cache
+
+    # Lấy DATABASE_URL từ AWS SSM Parameter Store (thay thế GCP Secret Manager)
+    # EC2 IAM Role đã được gắn AmazonSSMReadOnlyAccess nên không cần credential riêng
+    - name: Lấy DATABASE_URL từ AWS SSM Parameter Store
+      shell: >
+        aws ssm get-parameter
+        --name "{{ ssm_db_param }}"
+        --with-decryption
+        --query "Parameter.Value"
+        --output text
+        --region {{ aws_region | default('ap-southeast-1') }}
+      register: db_url_result
+      when: db_url is not defined
+
+    - name: Set db_url từ SSM nếu chưa có
+      set_fact:
+        db_url: "{{ db_url_result.stdout }}"
+      when: db_url is not defined and db_url_result is defined
+
+    - name: Start CTFd via docker-compose
+      shell: "DATABASE_URL='{{ db_url }}' docker-compose up -d"
+      args:
+        chdir: "{{ ctfd_dir }}"
+
+    - name: Configure Nginx as Reverse Proxy
+      copy:
+        dest: /etc/nginx/sites-available/default
+        content: |
+          server {
+              listen 80 default_server;
+              client_max_body_size 200M;
+
+              # Proxy to CTFd
+              location / {
+                  proxy_pass http://127.0.0.1:8000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
+        enabled: yes
+
+    # Amazon CloudWatch Agent - thay thế Google Cloud Ops Agent
+    # Đẩy Nginx logs, Docker logs về CloudWatch Logs
+    - name: Install Amazon CloudWatch Agent
+      shell: |
+        wget -q https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -O /tmp/amazon-cloudwatch-agent.deb
+        dpkg -i /tmp/amazon-cloudwatch-agent.deb
+        rm -f /tmp/amazon-cloudwatch-agent.deb
+      args:
+        creates: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent
+
+    - name: Configure CloudWatch Agent
+      copy:
+        dest: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+        content: |
+          {
+            "logs": {
+              "logs_collected": {
+                "files": {
+                  "collect_list": [
+                    {
+                      "file_path": "/var/log/nginx/access.log",
+                      "log_group_name": "/ctfd/nginx/access",
+                      "log_stream_name": "{instance_id}"
+                    },
+                    {
+                      "file_path": "/var/log/nginx/error.log",
+                      "log_group_name": "/ctfd/nginx/error",
+                      "log_stream_name": "{instance_id}"
+                    },
+                    {
+                      "file_path": "/opt/ctfd/logs/*.log",
+                      "log_group_name": "/ctfd/application",
+                      "log_stream_name": "{instance_id}"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+
+    - name: Start CloudWatch Agent
+      shell: >
+        /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl
+        -a fetch-config -m ec2 -s
+        -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json

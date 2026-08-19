@@ -1,0 +1,67 @@
+---
+# ============================================================
+# mtls_setup.yml - DÙNG CHUNG cho cả GCP và AWS
+# Phân phối chứng chỉ mTLS để bảo mật kết nối Docker API
+# giữa VM1 (Web Server) và VM2 (Challenge Server)
+#
+# Chạy TRƯỚC khi chạy vm2_challenge.yml
+# Yêu cầu: scripts/mtls_certs/ phải có các file PEM được generate sẵn
+# ============================================================
+
+# ---- VM2: Nhận Server certs (xác thực danh tính server) ----
+- name: Phân phối mTLS certificates đến VM2 (Challenge Server)
+  hosts: vm2_challenge
+  become: yes
+  tasks:
+    - name: Tạo thư mục docker certs trên VM2
+      file:
+        path: /etc/docker/certs.d
+        state: directory
+        mode: '0755'
+
+    - name: Copy CA certificate
+      copy:
+        src: ../../scripts/mtls_certs/ca.pem
+        dest: /etc/docker/certs.d/ca.pem
+        mode: '0444'
+
+    - name: Copy Server certificate
+      copy:
+        src: ../../scripts/mtls_certs/server-cert.pem
+        dest: /etc/docker/certs.d/server-cert.pem
+        mode: '0444'
+
+    - name: Copy Server private key
+      copy:
+        src: ../../scripts/mtls_certs/server-key.pem
+        dest: /etc/docker/certs.d/server-key.pem
+        mode: '0400'   # Chỉ root đọc được private key
+
+# ---- VM1: Nhận Client certs (xác thực CTFd khi gọi Docker API) ----
+- name: Phân phối mTLS certificates đến VM1 (Web Server)
+  hosts: vm1_web
+  become: yes
+  tasks:
+    - name: Tạo thư mục docker client certs trên VM1
+      file:
+        path: /etc/docker/client-certs
+        state: directory
+        mode: '0755'
+
+    - name: Copy CA certificate
+      copy:
+        src: ../../scripts/mtls_certs/ca.pem
+        dest: /etc/docker/client-certs/ca.pem
+        mode: '0444'
+
+    - name: Copy Client certificate
+      copy:
+        src: ../../scripts/mtls_certs/cert.pem
+        dest: /etc/docker/client-certs/cert.pem
+        mode: '0444'
+
+    - name: Copy Client private key
+      copy:
+        src: ../../scripts/mtls_certs/key.pem
+        dest: /etc/docker/client-certs/key.pem
+        mode: '0400'   # Chỉ root đọc được private key
