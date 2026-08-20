@@ -4,7 +4,9 @@
   become: yes
   vars:
     ctfd_dir: /opt/ctfd
-    ssm_db_param: "/ctfd/database-url"   # Tên SSM Parameter Store lưu DATABASE_URL
+    # NOTE: Dùng PostgreSQL container thay vì RDS
+    # Không cần SSM Parameter Store hay quyền RDS
+    db_password: "ChangeMe_Strong_2026!"   # Đổi password này trước khi deploy!
 
   tasks:
     - name: Update apt cache
@@ -44,18 +46,38 @@
         - "{{ ctfd_dir }}/uploads"    # QUAN TRỌNG: phải thuộc UID 1001 (user ctfd trong container)
         - "{{ ctfd_dir }}/logs"
         - "{{ ctfd_dir }}/redis"
+        - "{{ ctfd_dir }}/postgres"   # Volume cho PostgreSQL container
 
     - name: Copy custom themes
       copy:
         src: ../../themes/
         dest: "{{ ctfd_dir }}/themes/"
 
-    - name: Create docker-compose.yml cho CTFd + Redis
+    - name: Create docker-compose.yml cho CTFd + Redis + PostgreSQL
       copy:
         dest: "{{ ctfd_dir }}/docker-compose.yml"
         content: |
           version: '3'
           services:
+
+            # ============================================================
+            # PostgreSQL - thay thế RDS, chạy trực tiếp trên VM
+            # ============================================================
+            db:
+              image: postgres:15-alpine
+              restart: always
+              environment:
+                - POSTGRES_USER=ctfd
+                - POSTGRES_PASSWORD={{ db_password }}
+                - POSTGRES_DB=ctfd
+              volumes:
+                - {{ ctfd_dir }}/postgres:/var/lib/postgresql/data
+              healthcheck:
+                test: ["CMD-SHELL", "pg_isready -U ctfd"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
+
             ctfd:
               image: ctfd/ctfd:latest
               restart: always
@@ -64,7 +86,7 @@
               environment:
                 - SECRET_KEY={{ ctfd_secret_key | default('change_me_in_production') }}
                 - UPLOAD_FOLDER=/var/uploads
-                - DATABASE_URL=${DATABASE_URL}
+                - DATABASE_URL=postgresql://ctfd:{{ db_password }}@db:5432/ctfd
                 - REDIS_URL=redis://cache:6379
                 - WORKERS=4
                 - LOG_FOLDER=/var/log/CTFd
@@ -76,7 +98,10 @@
                 - {{ ctfd_dir }}/uploads:/var/uploads
                 - {{ ctfd_dir }}/themes/ctfd-theme-neubrutalism:/opt/CTFd/CTFd/themes/ctfd-theme-neubrutalism
               depends_on:
-                - cache
+                db:
+                  condition: service_healthy
+                cache:
+                  condition: service_started
 
             cache:
               image: redis:4
@@ -92,7 +117,7 @@
               environment:
                 - SECRET_KEY={{ ctfd_secret_key | default('change_me_in_production') }}
                 - UPLOAD_FOLDER=/var/uploads
-                - DATABASE_URL=${DATABASE_URL}
+                - DATABASE_URL=postgresql://ctfd:{{ db_password }}@db:5432/ctfd
                 - REDIS_URL=redis://cache:6379
                 - WORKERS=1
                 - LOG_FOLDER=/var/log/CTFd
@@ -106,26 +131,8 @@
                 - ctfd
                 - cache
 
-    # Lấy DATABASE_URL từ AWS SSM Parameter Store (thay thế GCP Secret Manager)
-    # EC2 IAM Role đã được gắn AmazonSSMReadOnlyAccess nên không cần credential riêng
-    - name: Lấy DATABASE_URL từ AWS SSM Parameter Store
-      shell: >
-        aws ssm get-parameter
-        --name "{{ ssm_db_param }}"
-        --with-decryption
-        --query "Parameter.Value"
-        --output text
-        --region {{ aws_region | default('ap-southeast-1') }}
-      register: db_url_result
-      when: db_url is not defined
-
-    - name: Set db_url từ SSM nếu chưa có
-      set_fact:
-        db_url: "{{ db_url_result.stdout }}"
-      when: db_url is not defined and db_url_result is defined
-
-    - name: Start CTFd via docker-compose
-      shell: "DATABASE_URL='{{ db_url }}' docker-compose up -d"
+    - name: Start CTFd via docker-compose (PostgreSQL chạy cùng stack)
+      shell: "docker-compose up -d"
       args:
         chdir: "{{ ctfd_dir }}"
 

@@ -29,6 +29,11 @@ credentials
 # ===== Backups =====
 backups/
 
+# ===== Local deployment exports / generated archives =====
+ctfd_config.txt
+remote_docker-compose.yml
+themes.zip
+
 # ===== OS / IDE =====
 .DS_Store
 Thumbs.db

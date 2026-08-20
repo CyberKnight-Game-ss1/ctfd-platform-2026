@@ -3,147 +3,100 @@
 {% block stylesheets %}
   {{ super() }}
   {% if request.path == "/" %}
-  <!-- Open Graph Meta Tags for Facebook -->
-  <meta property="og:title" content="CyberKnight Weekly Game 2026 - Web Exploitation">
-  <meta property="og:description" content="Join the Capture The Flag competition from June 29, 2026 to June 30, 2026.">
+  <meta property="og:title" content="{{ Configs.ctf_name }}">
+  <meta property="og:description" content="CYBERKNIGHT // NIGHT ISSUE">
   <meta property="og:image" content="{{ url_for('views.themes', theme='ctfd-theme-neubrutalism', path='img/logo_ctf.png') }}">
   <meta property="og:url" content="{{ request.url }}">
   <meta property="og:type" content="website">
-  
-  <style>
-    .main-section { padding-top: 0 !important; }
-
-    .ctf-brutal-hero {
-      background: transparent;
-      font-family: 'Inter', monospace, sans-serif;
-      min-height: calc(100vh - 120px);
-      display: flex;
-      align-items: center;
-      padding: 3rem 0;
-      color: #1a0010;
-    }
-    
-    html[data-bs-theme="dark"] .ctf-brutal-hero {
-      color: #f8fafc;
-    }
-
-    .brutal-title {
-      font-weight: 900;
-      font-size: clamp(2.5rem, 5vw, 4rem);
-      line-height: 1.1;
-      text-transform: uppercase;
-      margin-bottom: 1.5rem;
-      text-shadow: 4px 4px 0px #000;
-      color: #fff;
-      border: 3px solid #000;
-      background: #dc3545;
-      padding: 1rem;
-      display: inline-block;
-      box-shadow: 6px 6px 0px 0px #000;
-      transform: rotate(-1deg);
-    }
-    
-    html[data-bs-theme="dark"] .brutal-title {
-      box-shadow: 6px 6px 0px 0px #38bdf8;
-      border-color: #38bdf8;
-    }
-
-    .brutal-box {
-      border: 3px solid #000;
-      box-shadow: 5px 5px 0 0 #000;
-      background: var(--ctfd-surface-high, #fff);
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-      border-radius: 0.5rem;
-      font-weight: bold;
-    }
-
-    .brutal-btn {
-      border: 3px solid #000 !important;
-      box-shadow: 4px 4px 0 0 #000 !important;
-      font-weight: 800 !important;
-      text-transform: uppercase;
-      border-radius: 0.5rem !important;
-      transition: all 0.1s ease !important;
-      padding: 0.8rem 2rem !important;
-      font-size: 1.1rem !important;
-    }
-    .brutal-btn:active, .brutal-btn:hover {
-      transform: translate(2px, 2px) !important;
-      box-shadow: 2px 2px 0 0 #000 !important;
-    }
-
-    .brutal-logo {
-      max-width: 100%;
-      height: auto;
-      filter: drop-shadow(8px 8px 0px #000);
-      border: 4px solid #000;
-      border-radius: 2rem;
-      background: #fff;
-    }
-    
-    html[data-bs-theme="dark"] .brutal-logo {
-      filter: drop-shadow(8px 8px 0px var(--ctfd-accent));
-      border-color: var(--ctfd-accent);
-    }
-
-    .countdown-box {
-      border: 3px solid #000;
-      box-shadow: 4px 4px 0 0 #000;
-      border-radius: 0.5rem;
-      padding: 0.8rem 1.2rem;
-      text-align: center;
-      min-width: 80px;
-      color: #000;
-    }
-  </style>
   {% endif %}
 {% endblock %}
 
 {% block content %}
   {% if request.path == "/" %}
-    <section class="ctf-brutal-hero">
+    <section
+      class="ck-home-hero"
+      style="--ck-knight-url: url('{{ url_for('views.themes', theme='ctfd-theme-neubrutalism', path='img/cyberknight-knight.png') }}');"
+      x-data="HeroPanel"
+      data-start="{{ Configs.start or 0 }}"
+      data-end="{{ Configs.end or 0 }}"
+    >
       <div class="container">
-        <div class="row align-items-center">
-          
-          <!-- Left Column: Title and Information -->
-          <div class="col-lg-7 mb-5 mb-lg-0">
-            <h1 class="brutal-title">CyberKnight Weekly<br>Game 2026<br><span style="font-size:0.7em;">Web Exploitation</span></h1>
-            
-            <div class="brutal-box">
-              <h4 class="fw-bold mb-3" style="text-transform:uppercase; border-bottom: 2px solid #000; padding-bottom: 0.5rem;">Event Details</h4>
-              <p class="mb-2 fs-5"><strong>Start:</strong> June 29, 2026 08:00 AM</p>
-              <p class="mb-0 fs-5"><strong>End:</strong> June 30, 2026 08:00 AM</p>
+        <div class="ck-bulletin-masthead">
+          <div>
+            <p class="ck-masthead-title">CYBERKNIGHT GAME WEEKLY</p>
+            <p class="ck-masthead-subtitle">CTF OPERATIONS BULLETIN</p>
+          </div>
+          <div class="ck-masthead-issue">
+            <img src="{{ url_for('views.themes', theme='ctfd-theme-neubrutalism', path='img/logo_ctf.png') }}" alt="CyberKnight CTF competition logo" class="ck-competition-badge">
+            <div>
+              <span>ISSUE 01</span>
+              <small>VOL.01 / 2026</small>
             </div>
+          </div>
+        </div>
 
-            <div class="mt-4" style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+        <div class="ck-home-grid">
+          <div class="ck-home-copy">
+            <p class="ck-issue-meta">WEEKLY EDITION / LIVE CTF</p>
+            <h1 class="ck-hero-title">Cyber <span>Knight</span></h1>
+            <p class="ck-hero-copy">BREAK THE SYSTEM. READ THE MACHINE. CAPTURE THE FLAG.</p>
+            <div class="ck-hero-rule"></div>
+            <div class="d-flex flex-wrap gap-3 ck-hero-actions">
               {% if authed() %}
-                <a class="btn btn-primary brutal-btn" href="{{ url_for('challenges.listing') }}">
-                  {% trans %}Open Challenges{% endtrans %}
+                <a class="btn btn-primary" href="{{ url_for('challenges.listing') }}">
+                  {% trans %}Enter Operations{% endtrans %}
                 </a>
-                <a class="btn btn-secondary brutal-btn" href="{{ url_for('scoreboard.listing') }}">
+                <a class="btn btn-secondary" href="{{ url_for('scoreboard.listing') }}">
                   {% trans %}Scoreboard{% endtrans %}
                 </a>
               {% elif registration_visible() %}
-                <a class="btn btn-primary brutal-btn" href="{{ url_for('auth.register') }}">
+                <a class="btn btn-primary" href="{{ url_for('auth.register') }}">
                   {% trans %}REGISTER{% endtrans %}
                 </a>
-                <a class="btn btn-secondary brutal-btn" href="{{ url_for('auth.login') }}">
+                <a class="btn btn-secondary" href="{{ url_for('auth.login') }}">
                   {% trans %}LOGIN{% endtrans %}
                 </a>
               {% else %}
-                <a class="btn btn-primary brutal-btn" href="{{ url_for('auth.login') }}">
+                <a class="btn btn-primary" href="{{ url_for('auth.login') }}">
                   {% trans %}LOGIN{% endtrans %}
                 </a>
               {% endif %}
             </div>
+            <div class="ck-countdown-strip" x-cloak>
+              <div class="ck-countdown-heading">
+                <span>COUNTDOWN TO START</span>
+                <small x-text="label">STARTS IN</small>
+              </div>
+              <div class="ck-countdown-values" aria-live="polite" aria-label="Event countdown">
+                <div><strong x-text="days">00</strong><span>DAYS</span></div>
+                <div><strong x-text="hours">00</strong><span>HOURS</span></div>
+                <div><strong x-text="minutes">00</strong><span>MINUTES</span></div>
+                <div><strong x-text="seconds">00</strong><span>SECONDS</span></div>
+              </div>
+            </div>
+
+            <div class="ck-event-strip">
+              <span>STATUS / LIVE</span>
+              <span>FORMAT / CTF</span>
+              <span>EDITION / WEEKLY</span>
+            </div>
           </div>
 
-          <!-- Right Column: Logo -->
-          <div class="col-lg-5 text-center">
-            <img src="{{ url_for('views.themes', theme='ctfd-theme-neubrutalism', path='img/logo_ctf.png') }}" alt="CyberKnight Logo" class="brutal-logo">
-          </div>
-
+          <aside class="ck-reverse-panel" aria-labelledby="reverse-track-title">
+            <div class="ck-panel-kicker"><span>FEATURED TRACK</span><span>TECHNICAL BRIEF</span></div>
+            <h2 id="reverse-track-title">REVERSE<br>ENGINEERING</h2>
+            <p>Read the binary. Trace the execution. Recover the logic.</p>
+            <div class="ck-reverse-tags">
+              <span>STATIC ANALYSIS</span>
+              <span>DYNAMIC ANALYSIS</span>
+              <span>BINARY</span>
+              <span>DISASSEMBLY</span>
+            </div>
+            <pre class="ck-disassembly" aria-label="Disassembly preview"><code>00401000  PUSH RBP
+00401001  MOV  RBP, RSP
+00401004  XOR  EAX, EAX
+00401006  CALL TRACE_ENTRY</code></pre>
+          </aside>
         </div>
       </div>
     </section>

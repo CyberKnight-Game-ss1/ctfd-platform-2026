@@ -1,10 +1,14 @@
 <nav class="navbar navbar-expand-lg fixed-top">
   <div class="container-fluid">
     <a href="{{ url_for('views.static_html', route='/') }}" class="navbar-brand">
-      <span class="brand-mark" aria-hidden="true"></span>
+      <img
+        src="{{ url_for('views.themes', theme='ctfd-theme-neubrutalism', path='img/logo_club.jpg') }}"
+        alt="CyberKnight Club logo"
+        class="brand-logo"
+      >
       <span class="brand-meta">
-        <span class="brand-overline">CyberKnight Weekly Game</span>
-        <span class="brand-title">CyberKnight Club</span>
+        <span class="brand-overline">NIGHT ISSUE / OPERATIONS DESK</span>
+        <span class="brand-title">CYBER <span style="color:var(--ck-red);">KNIGHT</span></span>
       </span>
     </a>
 

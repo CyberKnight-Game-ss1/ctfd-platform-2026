@@ -2999,3 +2999,6 @@ input[type="file"].form-control:hover::file-selector-button {
     scroll-behavior: auto !important;
   }
 }
+
+/* Keep CYBERKNIGHT presentation overrides after the legacy theme rules. */
+@import "cyberknight";

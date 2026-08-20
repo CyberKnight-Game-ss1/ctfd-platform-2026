@@ -10,7 +10,7 @@ function getPreferredTheme() {
     return storedTheme;
   }
   // Firefox with 'resistFingerprint' activated always returns light
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return "dark";
 }
 
 /**

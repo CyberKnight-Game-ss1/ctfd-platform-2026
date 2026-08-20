@@ -9,6 +9,10 @@ Alpine.data("HeroPanel", () => ({
   end: null,
   timer: "",
   label: "",
+  days: "00",
+  hours: "00",
+  minutes: "00",
+  seconds: "00",
   challengeCount: 0,
 
   async init() {
@@ -31,19 +35,21 @@ Alpine.data("HeroPanel", () => ({
     let target = 0;
 
     if (this.start && this.now < this.start) {
-      this.label = "Event Starts In";
+      this.label = "STARTS IN";
       target = this.start - this.now;
     } else if (this.end && this.now < this.end) {
-      this.label = "Time Remaining";
+      this.label = "EVENT LIVE";
       target = this.end - this.now;
     } else if (this.start && this.now >= this.start && !this.end) {
       this.label = "Event Started At";
       let d = new Date(this.start * 1000);
       this.timer = d.toLocaleTimeString([], { hour12: false });
+      this.days = this.hours = this.minutes = this.seconds = "00";
       return;
     } else {
-      this.label = "Event Ended";
+      this.label = "EVENT ENDED";
       this.timer = "00:00:00";
+      this.days = this.hours = this.minutes = this.seconds = "00";
       return;
     }
 
@@ -52,6 +58,10 @@ Alpine.data("HeroPanel", () => ({
       let h = Math.floor(target / 3600) % 24;
       let m = Math.floor((target % 3600) / 60);
       let s = target % 60;
+      this.days = String(d).padStart(2, "0");
+      this.hours = String(h).padStart(2, "0");
+      this.minutes = String(m).padStart(2, "0");
+      this.seconds = String(s).padStart(2, "0");
       this.timer = [d, h, m, s].map(v => (v < 10 ? "0" + v : v)).join(":");
     }
   },

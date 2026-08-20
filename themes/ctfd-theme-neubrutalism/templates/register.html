@@ -12,6 +12,7 @@
 
   <section class="page-section">
     <div class="container">
+      <div class="ck-auth-grid">
         <div class="auth-panel form-panel form-panel-narrow">
         {% include "components/errors.html" %}
 
@@ -88,6 +89,10 @@
           </form>
         {% endwith %}
         </div>
+        <div class="ck-art-slot">
+          <img src="{{ url_for('views.themes', theme='ctfd-theme-neubrutalism', path='img/cyberknight-knight.png') }}" alt="CyberKnight knight guardian" class="ck-knight-art">
+        </div>
+      </div>
     </div>
   </section>
 {% endblock %}

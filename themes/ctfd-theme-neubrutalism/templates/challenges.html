@@ -2,10 +2,10 @@
 
 {% block content %}
   <style>
-    /* Cyberpunk / Neubrutalism Category Styling */
+    /* CYBERKNIGHT category index styling */
     .challenge-category-filter {
-      background-color: #1e1e24 !important; /* dim background */
-      border: 2px solid #000 !important;
+      background-color: var(--ck-surface) !important;
+      border: 1px solid var(--ck-rule) !important;
       box-sizing: border-box !important;
       transition: transform 0.1s, box-shadow 0.1s !important; /* prevent layout shift */
       padding: 0.8rem 1.2rem !important; /* Thêm khoảng cách với khung */
@@ -16,21 +16,21 @@
     }
     .challenge-category-filter .challenge-category-filter-name,
     .challenge-category-filter .challenge-category-filter-count {
-      color: #888 !important;
+      color: var(--ck-text-2) !important;
       font-weight: 400 !important; /* non-bold */
       font-size: 1.1rem !important; /* Chữ to hơn chút */
     }
     .challenge-category-filter:hover {
-      background-color: #2a2a35 !important;
+      background-color: var(--ck-surface-raised) !important;
     }
     .challenge-category-filter.is-active {
-      background-color: #ff003c !important; /* bright active */
-      box-shadow: 4px 4px 0 #000 !important;
+      background-color: var(--ck-red) !important;
+      box-shadow: 4px 4px 0 var(--ck-bg-deep) !important;
       transform: translate(-2px, -2px) !important;
     }
     .challenge-category-filter.is-active .challenge-category-filter-name,
     .challenge-category-filter.is-active .challenge-category-filter-count {
-      color: #ffffff !important; /* white title text */
+      color: var(--ck-bg-deep) !important;
       font-weight: 400 !important; /* non-bold */
     }
   </style>
