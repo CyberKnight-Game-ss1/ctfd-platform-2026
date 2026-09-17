@@ -18,14 +18,21 @@ aws ec2 describe-instances \
   --region ap-southeast-1
 ```
 
-### SSH vào EC2 qua SSM Session Manager
+### SSH vào EC2
 
+**Cách 1: SSH trực tiếp bằng file .pem (Đã mở Port 22)**
+```bash
+ssh -i /path/to/vm1_ctfd.pem ubuntu@<VM1_PUBLIC_IP>
+ssh -i /path/to/vm2_whale.pem ubuntu@<VM2_PUBLIC_IP>
+```
+
+**Cách 2: Qua SSM Session Manager**
 ```bash
 # Cài SSM Session Manager plugin (một lần):
 # macOS: brew install session-manager-plugin
 # Linux: Xem https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
 
-# SSH vào VM1 (không cần key pair, không cần port 22 mở)
+# SSH vào VM1
 aws ssm start-session --target $VM1_ID --region ap-southeast-1
 
 # SSH vào VM2
@@ -140,6 +147,20 @@ aws ssm send-command \
   --document-name "AWS-RunShellScript" \
   --parameters '{"commands":["sudo chown -R 1001:1001 /opt/ctfd/uploads","sudo chmod -R 755 /opt/ctfd/uploads"]}' \
   --region ap-southeast-1
+```
+
+### Lỗi "Container creation failed" khi Start Instance bài động (CTFd-Whale)
+
+**Nguyên nhân:** File template cấu hình `frpc.ini` lưu trong Database (bảng `config`) bị lỗi định dạng khoảng trắng hoặc ngắt dòng (các ký tự `\n` bị lưu dưới dạng chuỗi chữ thay vì ngắt dòng thật), khiến bộ định tuyến `frpc-router` trên VM2 không đọc được cấu hình.
+
+**Giải pháp:**
+Cập nhật lại trường `whale:frp_config_template` trong database PostgreSQL trên VM1 thành chuỗi có ngắt dòng thực sự, sau đó khởi động lại CTFd:
+```bash
+# SSH vào VM1 và chạy lệnh update DB
+sudo docker exec -i ctfd_db_1 psql -U ctfd -d ctfd -c "UPDATE config SET value = E'[common]\nserver_addr = 172.1.0.4\nserver_port = 8080\ntoken = random_token\n' WHERE key = 'whale:frp_config_template';"
+
+# Khởi động lại CTFd và Worker
+sudo docker restart ctfd_ctfd_1 ctfd_worker_1
 ```
 
 ### CTFd không kết nối được RDS

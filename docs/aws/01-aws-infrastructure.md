@@ -120,8 +120,16 @@ Trỏ bản ghi A của domain về IP của VM1. Bật **Cloudflare Proxy** (m�
 
 ## Quản lý & Vận hành
 
-### SSH vào EC2 qua SSM Session Manager (không cần mở port 22)
+### SSH vào EC2
 
+**Cách 1: SSH trực tiếp (Đã mở Port 22)**
+Sử dụng 2 file `.pem` đã tạo (`vm1_ctfd.pem` và `vm2_whale.pem`) để kết nối thẳng:
+```bash
+ssh -i /path/to/vm1_ctfd.pem ubuntu@<VM1_PUBLIC_IP>
+ssh -i /path/to/vm2_whale.pem ubuntu@<VM2_PUBLIC_IP>
+```
+
+**Cách 2: Qua SSM Session Manager (Dự phòng)**
 ```bash
 # Cài Session Manager plugin nếu chưa có
 # Xem: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
