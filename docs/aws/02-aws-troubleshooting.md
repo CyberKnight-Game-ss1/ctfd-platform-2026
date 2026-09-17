@@ -18,21 +18,14 @@ aws ec2 describe-instances \
   --region ap-southeast-1
 ```
 
-### SSH vào EC2
+### SSH vào EC2 qua SSM Session Manager
 
-**Cách 1: SSH trực tiếp bằng file .pem (Đã mở Port 22)**
-```bash
-ssh -i /path/to/vm1_ctfd.pem ubuntu@<VM1_PUBLIC_IP>
-ssh -i /path/to/vm2_whale.pem ubuntu@<VM2_PUBLIC_IP>
-```
-
-**Cách 2: Qua SSM Session Manager**
 ```bash
 # Cài SSM Session Manager plugin (một lần):
 # macOS: brew install session-manager-plugin
 # Linux: Xem https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
 
-# SSH vào VM1
+# SSH vào VM1 (không cần key pair, không cần port 22 mở)
 aws ssm start-session --target $VM1_ID --region ap-southeast-1
 
 # SSH vào VM2
