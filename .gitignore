@@ -49,3 +49,6 @@ Thumbs.db
 .claude/logs/
 !.claude/
 !.claude/**
+
+__pycache__/
+*.backup
