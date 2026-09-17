@@ -4,9 +4,20 @@
   become: yes
   vars:
     ctfd_dir: /opt/ctfd
+    ctf_domain: cyberknightgame.site
+    theme_name: ctfd-theme-neubrutalism
+    theme_src_dir: "{{ playbook_dir }}/../../themes"
+    theme_archive: /tmp/ctfd-theme.tgz
     # NOTE: Dùng PostgreSQL container thay vì RDS
     # Không cần SSM Parameter Store hay quyền RDS
-    db_password: "ChangeMe_Strong_2026!"   # Đổi password này trước khi deploy!
+    #
+    # SECRETS: KHÔNG khai báo secret trong playbook này (repo là public).
+    # DB_PASSWORD / CTFD_SECRET_KEY / FRP_TOKEN được SINH NGAY TRÊN VM1 bằng
+    # `openssl rand` và ghi vào {{ ctfd_dir }}/.env (0600 root:root).
+    # docker compose (v2) tự đọc .env cùng thư mục project để thay ${...}.
+    # Đọc lại khi cần (vd: dán token vào cấu hình CTFd-Whale):
+    #   sudo grep FRP_TOKEN /opt/ctfd/.env
+    # Rotate: xoá .env + volume postgres rồi chạy lại playbook.
 
   tasks:
     - name: Update apt cache
@@ -19,10 +30,22 @@
         name:
           - nginx
           - docker.io
-          - docker-compose
+          # docker-compose v2 (apt: docker-compose-v2, 2.40.3) — KHÔNG dùng gói
+          # `docker-compose` v1.29.2 (python) của Ubuntu: v1 dùng API cũ nên
+          # recreate container trên Docker Engine 29 nổ `KeyError: 'ContainerConfig'`
+          # → playbook mất idempotent. Gói v2 Provides: docker-compose (thay thế hợp lệ).
+          - docker-compose-v2
           - python3-pip
           - unzip
         state: present
+
+    # Gỡ binary v1 để không ai vô tình gọi `docker-compose` (hỏng với Engine 29+).
+    # Đã kiểm chứng `apt-get remove -s docker-compose` chỉ xóa đúng gói v1,
+    # KHÔNG đụng tới docker-compose-v2.
+    - name: Gỡ docker-compose v1 (không tương thích Docker Engine 29+)
+      apt:
+        name: docker-compose
+        state: absent
 
     - name: Install AWS CLI v2
       shell: |
@@ -48,16 +71,183 @@
         - "{{ ctfd_dir }}/redis"
         - "{{ ctfd_dir }}/postgres"   # Volume cho PostgreSQL container
 
-    - name: Copy custom themes
-      copy:
-        src: ../../themes/
+    # ============================================================
+    # SECRETS — sinh ngay trên VM1, KHÔNG đi qua git / chat / log agent
+    # Ghi vào /opt/ctfd/.env (0600 root:root); docker-compose đọc .env trong
+    # thư mục project để thay ${DB_PASSWORD} / ${CTFD_SECRET_KEY}.
+    # Idempotent theo TỪNG KEY: chỉ sinh key còn thiếu, KHÔNG ghi đè giá trị
+    # đang dùng (ghi đè sẽ làm password không khớp volume /opt/ctfd/postgres).
+    # Dùng hex (0-9a-f) để nhúng thẳng vào DATABASE_URL, không cần URL-encode.
+    # ============================================================
+    - name: Sinh secrets trên VM1 vào /opt/ctfd/.env (idempotent theo từng key)
+      shell: |
+        set -euo pipefail
+        ENV_FILE="{{ ctfd_dir }}/.env"
+        touch "$ENV_FILE"
+        appended=no
+        ensure_key() {
+          key="$1"
+          len="$2"
+          if ! grep -q "^${key}=" "$ENV_FILE"; then
+            printf '%s=%s\n' "$key" "$(openssl rand -hex "$len")" >> "$ENV_FILE"
+            appended=yes
+          fi
+        }
+        ensure_key DB_PASSWORD 24
+        ensure_key CTFD_SECRET_KEY 32
+        ensure_key FRP_TOKEN 24
+        chown root:root "$ENV_FILE"
+        chmod 600 "$ENV_FILE"
+        echo "appended=$appended"
+      register: ctfd_env_file
+      changed_when: "'appended=yes' in ctfd_env_file.stdout"
+      args:
+        executable: /bin/bash # set -o pipefail KHÔNG có trong dash (/bin/sh) — Ansible shell mặc định dùng sh
+      no_log: true
+
+    - name: Đọc FRP_TOKEN từ .env trên VM1
+      shell: "grep '^FRP_TOKEN=' {{ ctfd_dir }}/.env | cut -d= -f2"
+      register: ctfd_frp_token_raw
+      changed_when: false
+      # Task CHỈ ĐỌC: cho chạy cả trong dry-run để các task sau có dữ liệu.
+      # failed_when: false — khi dry-run, task sinh .env (shell) bị skip nên file
+      # chưa tồn tại; lỗi thật vẫn bị chặn bởi task assert ngay dưới.
+      check_mode: false
+      failed_when: false
+      no_log: true
+
+    - name: Nạp frp_token thành fact (dùng cho frps.ini)
+      set_fact:
+        frp_token: "{{ ctfd_frp_token_raw.stdout | trim }}"
+      no_log: true
+
+    - name: Kiểm tra secrets đã sẵn sàng
+      assert:
+        that:
+          - frp_token | length >= 24
+        fail_msg: "Không đọc được FRP_TOKEN từ {{ ctfd_dir }}/.env — xem task sinh secrets."
+      # Bỏ qua khi dry-run: lúc đó .env chưa được sinh nên token rỗng là bình thường.
+      when: not ansible_check_mode
+      no_log: true
+
+    # ============================================================
+    # THEME — truyền 1 file tar.gz thay vì copy từng file
+    # `copy` cả thư mục theme = 7000+ file; qua SSM mỗi file là 1 vòng
+    # presigned-URL S3/download → treo hàng giờ. Trong đó 6842 file / ~146MB
+    # là node_modules (chỉ dùng cho `vite build`, KHÔNG cần lúc runtime).
+    # → tar.gz loại node_modules + .git (còn ~180 file), rồi unarchive trên VM.
+    # ============================================================
+    - name: Đóng gói theme trên control node (loại node_modules và .git)
+      shell: |
+        tar -czf "{{ theme_archive }}" \
+          --exclude=node_modules --exclude=.git \
+          -C "{{ theme_src_dir }}" "{{ theme_name }}"
+      args:
+        executable: /bin/bash
+      delegate_to: localhost
+      become: false
+      changed_when: false
+      # Tạo file tar tạm ở /tmp của control node (không đụng máy đích) và luôn
+      # tạo lại — cần thiết để task `unarchive` ngay dưới có file nguồn cả khi dry-run.
+      check_mode: false
+      # Inventory SSM đặt ansible_connection=aws_ssm trong [all:vars]; ép local
+      # để task này chạy trên control node chứ không đòi instance_id.
+      vars:
+        ansible_connection: local
+
+    - name: Giải nén theme lên VM1
+      unarchive:
+        src: "{{ theme_archive }}"
         dest: "{{ ctfd_dir }}/themes/"
+        owner: "1001"
+        group: "1001"
+
+    - name: Create custom Dockerfile for CTFd-Whale
+      copy:
+        dest: "{{ ctfd_dir }}/Dockerfile"
+        content: |
+          FROM ctfd/ctfd:latest
+          USER root
+          RUN apt-get update && apt-get install -y git
+          RUN git clone https://github.com/frankli0324/ctfd-whale.git /opt/CTFd/CTFd/plugins/ctfd-whale
+          # ctfd-whale pins docker==4.1.0 (API v1.35), which is too old for
+          # current Docker Engine releases. Override it with a compatible SDK.
+          RUN cd /opt/CTFd/CTFd/plugins/ctfd-whale && pip install -r requirements.txt && pip install --no-cache-dir --upgrade docker==7.1.0
+          # PostgreSQL driver: image ctfd/ctfd chỉ kèm driver SQLite/pymysql.
+          # Không có psycopg2 thì CTFd crash-loop với
+          # "sqlalchemy ... ModuleNotFoundError: No module named 'psycopg2'".
+          # Đặt ở layer CUỐI để chỉ layer này rebuild khi đổi (giữ cache layer whale).
+          RUN pip install --no-cache-dir psycopg2-binary
+          USER 1001
+
+    - name: Create FRP directory
+      file:
+        path: "{{ ctfd_dir }}/frp"
+        state: directory
+        mode: '0755'
+
+    - name: Create frps.ini
+      copy:
+        dest: "{{ ctfd_dir }}/frp/frps.ini"
+        content: |
+          [common]
+          bind_port = 7000
+          dashboard_port = 7400
+          vhost_http_port = 8080
+          # Required for CTFd-Whale HTTP instances that use `subdomain`.
+          subdomain_host = {{ ctf_domain }}
+          # Token sinh trên VM (xem task "Sinh secrets trên VM1").
+          # Lấy giá trị để dán vào CTFd-Whale admin: sudo grep FRP_TOKEN /opt/ctfd/.env
+          token = {{ frp_token }}
+        mode: '0644'
+      no_log: true # nội dung file chứa FRP token
+
+    - name: Create Google Form Email Plugin directory
+      file:
+        path: "{{ ctfd_dir }}/plugins/google_form_email"
+        state: directory
+        owner: "1001"
+        group: "1001"
+        mode: '0755'
+
+    - name: Write Google Form Email Plugin code
+      copy:
+        dest: "{{ ctfd_dir }}/plugins/google_form_email/__init__.py"
+        owner: "1001"
+        group: "1001"
+        mode: '0644'
+        content: |
+          import urllib.request
+          import urllib.parse
+          import CTFd.utils.email
+          
+          def form_sendmail(addr, text, subject):
+              url = "https://docs.google.com/forms/d/e/1FAIpQLSe-ynAZ_yfKm93s_Fe8bBMpk8BraXToQForOWlQ2-_xvmVyqQ/formResponse"
+              data = {
+                  "entry.79252641": addr,
+                  "entry.1191181504": subject,
+                  "entry.1288287855": text
+              }
+              encoded_data = urllib.parse.urlencode(data).encode('utf-8')
+              req = urllib.request.Request(url, data=encoded_data)
+              try:
+                  urllib.request.urlopen(req)
+                  return True, "Email sent via Google Form"
+              except Exception as e:
+                  return False, str(e)
+          
+          def load(app):
+              CTFd.utils.email.sendmail = form_sendmail
 
     - name: Create docker-compose.yml cho CTFd + Redis + PostgreSQL
       copy:
         dest: "{{ ctfd_dir }}/docker-compose.yml"
         content: |
-          version: '3'
+          # KHÔNG khai báo `version:` — Compose v2 (Spec) bỏ qua và cảnh báo obsolete.
+          # Secrets KHÔNG hardcode: ${DB_PASSWORD} và ${CTFD_SECRET_KEY} được
+          # docker compose thay bằng giá trị trong /opt/ctfd/.env (0600 root:root,
+          # sinh bởi task "Sinh secrets trên VM1" trong ansible/aws/vm1_web.yml).
+          # Compose tự nạp file .env nằm cùng thư mục project.
           services:
 
             # ============================================================
@@ -68,7 +258,7 @@
               restart: always
               environment:
                 - POSTGRES_USER=ctfd
-                - POSTGRES_PASSWORD={{ db_password }}
+                - POSTGRES_PASSWORD=${DB_PASSWORD}
                 - POSTGRES_DB=ctfd
               volumes:
                 - {{ ctfd_dir }}/postgres:/var/lib/postgresql/data
@@ -79,14 +269,14 @@
                 retries: 5
 
             ctfd:
-              image: ctfd/ctfd:latest
+              build: .
               restart: always
               ports:
                 - "8000:8000"
               environment:
-                - SECRET_KEY={{ ctfd_secret_key | default('change_me_in_production') }}
+                - SECRET_KEY=${CTFD_SECRET_KEY}
                 - UPLOAD_FOLDER=/var/uploads
-                - DATABASE_URL=postgresql://ctfd:{{ db_password }}@db:5432/ctfd
+                - DATABASE_URL=postgresql://ctfd:${DB_PASSWORD}@db:5432/ctfd
                 - REDIS_URL=redis://cache:6379
                 - WORKERS=4
                 - LOG_FOLDER=/var/log/CTFd
@@ -97,6 +287,7 @@
                 - {{ ctfd_dir }}/logs:/var/log/CTFd
                 - {{ ctfd_dir }}/uploads:/var/uploads
                 - {{ ctfd_dir }}/themes/ctfd-theme-neubrutalism:/opt/CTFd/CTFd/themes/ctfd-theme-neubrutalism
+                - {{ ctfd_dir }}/plugins/google_form_email:/opt/CTFd/CTFd/plugins/google_form_email
               depends_on:
                 db:
                   condition: service_healthy
@@ -115,9 +306,9 @@
               restart: always
               command: ["opt/CTFd/ping.sh", "redis:6379", "worker"]
               environment:
-                - SECRET_KEY={{ ctfd_secret_key | default('change_me_in_production') }}
+                - SECRET_KEY=${CTFD_SECRET_KEY}
                 - UPLOAD_FOLDER=/var/uploads
-                - DATABASE_URL=postgresql://ctfd:{{ db_password }}@db:5432/ctfd
+                - DATABASE_URL=postgresql://ctfd:${DB_PASSWORD}@db:5432/ctfd
                 - REDIS_URL=redis://cache:6379
                 - WORKERS=1
                 - LOG_FOLDER=/var/log/CTFd
@@ -127,21 +318,94 @@
               volumes:
                 - {{ ctfd_dir }}/logs:/var/log/CTFd
                 - {{ ctfd_dir }}/uploads:/var/uploads
+                - {{ ctfd_dir }}/plugins/google_form_email:/opt/CTFd/CTFd/plugins/google_form_email
               depends_on:
                 - ctfd
                 - cache
 
-    - name: Start CTFd via docker-compose (PostgreSQL chạy cùng stack)
-      shell: "docker-compose up -d"
+            frps:
+              image: glzjin/frp
+              restart: always
+              environment:
+                # glzjin/frp reads server configuration from /etc/frp/frps.ini.
+                FRP_MODE: frps
+              volumes:
+                - {{ ctfd_dir }}/frp:/etc/frp:ro
+              ports:
+                - "7000:7000"
+                - "10000-10100:10000-10100"
+                - "127.0.0.1:8080:8080"
+                - "127.0.0.1:7400:7400"
+
+    - name: Start CTFd stack (docker compose v2 — PostgreSQL chạy cùng stack)
+      shell: "docker compose up -d --build"
       args:
         chdir: "{{ ctfd_dir }}"
+      register: compose_up
+      changed_when: "'Started' in compose_up.stdout or 'Recreated' in compose_up.stdout or 'Created' in compose_up.stdout"
 
     - name: Configure Nginx as Reverse Proxy
       copy:
         dest: /etc/nginx/sites-available/default
         content: |
+          # ============================================================
+          # FORENSICS — phục vụ điều tra gian lận (thêm 09/2026)
+          # 1) realip: sg_web chỉ nhận traffic từ Cloudflare nên $remote_addr
+          #    mặc định = IP edge Cloudflare. Bật realip để $remote_addr trở
+          #    thành IP player thật (header CF-Connecting-IP do CF gắn):
+          #    - access.log ghi IP thật của player
+          #    - CTFd (REVERSE_PROXY=True) nhận X-Real-IP = IP player thật
+          #      → bảng submissions trong DB CTFd lưu đúng IP người chơi
+          # 2) log_format ctfd_forensics: thêm cf_ray (đối chiếu Cloudflare
+          #    analytics), user_agent, request_time phục vụ truy vết.
+          # CloudWatch Agent đẩy file này lên group /ctfd/nginx/access.
+          # ============================================================
+          set_real_ip_from 173.245.48.0/20;
+          set_real_ip_from 103.21.244.0/22;
+          set_real_ip_from 103.22.200.0/22;
+          set_real_ip_from 103.31.4.0/22;
+          set_real_ip_from 141.101.64.0/18;
+          set_real_ip_from 108.162.192.0/18;
+          set_real_ip_from 190.93.240.0/20;
+          set_real_ip_from 188.114.96.0/20;
+          set_real_ip_from 197.234.240.0/22;
+          set_real_ip_from 198.41.128.0/17;
+          set_real_ip_from 162.158.0.0/15;
+          set_real_ip_from 104.16.0.0/13;
+          set_real_ip_from 104.24.0.0/14;
+          set_real_ip_from 172.64.0.0/13;
+          set_real_ip_from 131.0.72.0/22;
+          real_ip_header CF-Connecting-IP;
+          real_ip_recursive on;
+
+          log_format ctfd_forensics '$remote_addr - $remote_user [$time_local] '
+                                    '"$request" $status $body_bytes_sent '
+                                    '"$http_referer" "$http_user_agent" '
+                                    'cf_ray=$http_cf_ray rt=$request_time';
+          access_log /var/log/nginx/access.log ctfd_forensics;
+
+          # Instance traffic is terminated by Nginx and forwarded to FRP.
+          # The wildcard host keeps each deployed instance on its UUID hostname.
+          server {
+              listen 80;
+              listen [::]:80;
+              server_name *.{{ ctf_domain }};
+              client_max_body_size 200M;
+
+              location / {
+                  proxy_pass http://127.0.0.1:8080;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_http_version 1.1;
+                  proxy_buffering off;
+              }
+          }
+
           server {
               listen 80 default_server;
+              listen [::]:80 default_server;
               client_max_body_size 200M;
 
               # Proxy to CTFd
@@ -153,6 +417,66 @@
                   proxy_set_header X-Forwarded-Proto $scheme;
               }
           }
+
+          server {
+              listen 443 ssl;
+              listen [::]:443 ssl;
+              server_name *.{{ ctf_domain }};
+              client_max_body_size 200M;
+              ssl_certificate /etc/nginx/ssl/nginx.crt;
+              ssl_certificate_key /etc/nginx/ssl/nginx.key;
+
+              location / {
+                  proxy_pass http://127.0.0.1:8080;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_http_version 1.1;
+                  proxy_buffering off;
+              }
+          }
+
+          server {
+              listen 443 ssl default_server;
+              listen [::]:443 ssl default_server;
+              server_name {{ ctf_domain }};
+              client_max_body_size 200M;
+              ssl_certificate /etc/nginx/ssl/nginx.crt;
+              ssl_certificate_key /etc/nginx/ssl/nginx.key;
+
+              location / {
+                  proxy_pass http://127.0.0.1:8000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+
+    # ============================================================
+    # TLS cho Nginx — cert self-signed
+    # Cloudflare đứng trước (proxy cam) nên trình duyệt luôn thấy cert của CF;
+    # cert ở đây chỉ dùng cho chặng Cloudflare → origin (mode "Full" KHÔNG
+    # validate cert, "Full (strict)" mới cần cert do CA ký hoặc Origin
+    # Certificate của Cloudflare). Tạo sẵn để `nginx -t` không fail.
+    # ============================================================
+    - name: Tạo thư mục SSL cho Nginx
+      file:
+        path: /etc/nginx/ssl
+        state: directory
+        mode: '0700'
+
+    - name: Sinh self-signed cert cho Nginx (bỏ qua nếu đã có)
+      shell: |
+        openssl req -x509 -nodes -newkey rsa:2048 -days 3650 \
+          -keyout /etc/nginx/ssl/nginx.key \
+          -out /etc/nginx/ssl/nginx.crt \
+          -subj "/CN={{ ctf_domain }}"
+        chmod 600 /etc/nginx/ssl/nginx.key
+        chmod 644 /etc/nginx/ssl/nginx.crt
+      args:
+        creates: /etc/nginx/ssl/nginx.crt
 
     - name: Restart Nginx
       service:

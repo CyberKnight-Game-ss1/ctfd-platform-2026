@@ -8,7 +8,7 @@ resource "random_id" "bucket_suffix" {
 # ============================================================
 resource "aws_s3_bucket" "ctf_storage" {
   bucket        = "ctf-storage-${random_id.bucket_suffix.hex}"
-  force_destroy = true  # Đổi thành false khi thi đấu thật
+  force_destroy = true # Đổi thành false khi thi đấu thật
 
   tags = {
     Name    = "ctf-storage"
@@ -47,13 +47,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "ctf_storage" {
     id     = "transition-to-ia"
     status = "Enabled"
 
+    # filter rỗng = áp cho toàn bộ object (provider 5.x bắt đầu yêu cầu filter/prefix)
+    filter {}
+
     transition {
       days          = 7
       storage_class = "STANDARD_IA"
     }
 
+    # AWS yêu cầu GLACIER transition phải cách IA tối thiểu 30 ngày
     transition {
-      days          = 30
+      days          = 37
       storage_class = "GLACIER"
     }
   }

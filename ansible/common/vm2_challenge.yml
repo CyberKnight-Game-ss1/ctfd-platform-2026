@@ -43,9 +43,9 @@
         state: started
         enabled: yes
 
-    # docker-socket-proxy chạy như một container, expose Docker API qua port 2376 với mTLS
-    # Chứng chỉ mTLS được copy bởi ansible/common/mtls_setup.yml
-    - name: Run docker-socket-proxy với mTLS
+    # tecnativa/docker-socket-proxy serves HTTP on container port 2375.
+    # Keep it loopback-only; CTFd reaches it through the encrypted FRP tunnel.
+    - name: Run docker-socket-proxy for encrypted FRP access
       docker_container:
         name: docker-proxy
         image: tecnativa/docker-socket-proxy
@@ -53,23 +53,26 @@
         restart_policy: always
         privileged: true
         ports:
-          - "2376:2376"
+          - "127.0.0.1:2376:2375"
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock
-          - /etc/docker/certs.d:/run/secrets:ro
         env:
           CONTAINERS: "1"
-          POST: "0"
-          START: "1"
-          STOP: "1"
-          RESTART: "1"
+          # CTFd-Whale creates and removes Docker Swarm services, not
+          # ordinary containers. Keep the proxy allowlist explicit.
+          POST: "1"
+          SERVICES: "1"
+          SWARM: "1"
+          TASKS: "1"
+          EVENTS: "1"
+          # Whale creates/lists/removes overlay networks for grouped instances.
+          NETWORKS: "1"
+          ALLOW_START: "1"
+          ALLOW_STOP: "1"
+          ALLOW_RESTARTS: "1"
           INFO: "1"
-          TLS_CERT_PATH: /run/secrets/server-cert.pem
-          TLS_KEY_PATH: /run/secrets/server-key.pem
-          TLS_CA_PATH: /run/secrets/ca.pem
-          REQUIRE_TLS: "1"
-          # Ghi chú: port 2376 chỉ được mở cho VM1 qua Firewall/Security Group
-          # Không cần bind vào IP cụ thể vì Firewall đã chặn external traffic
+          PING: "1"
+          VERSION: "1"
 
     # ============================================================
     # tcpdump - Capture traffic trong Docker network để phân tích sau thi đấu

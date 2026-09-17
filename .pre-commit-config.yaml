@@ -1,0 +1,65 @@
+# Pre-commit hooks cho ctfd-platform-2026
+# Cài: pip install --user pre-commit && pre-commit install
+# Chạy mọi file: pre-commit run --all-files
+repos:
+  # Hooks chuẩn nhẹ (whitespace, json, yaml, large files, credentials AWS)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.md$'          # md cho phép 2 dấu cách cuối dòng
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+        exclude: '^\.claude/skills/vendored/'
+      - id: check-json
+        exclude: '^\.claude/skills/vendored/'
+      - id: check-added-large-files
+        args: ["--maxkb=2048"]
+      - id: detect-aws-credentials
+        args: ["--allow-missing-credentials"]
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  # Local: terraform fmt + validate cho từng cloud dir
+  - repo: local
+    hooks:
+      - id: terraform-fmt-aws
+        name: terraform fmt (aws)
+        entry: terraform -chdir=terraform/aws fmt
+        language: system
+        pass_filenames: false
+        files: '^terraform/aws/.*\.tf$'
+      - id: terraform-fmt-gcp
+        name: terraform fmt (gcp)
+        entry: terraform -chdir=terraform/gcp fmt
+        language: system
+        pass_filenames: false
+        files: '^terraform/gcp/.*\.tf$'
+      - id: terraform-validate-aws
+        name: terraform validate (aws)
+        entry: terraform -chdir=terraform/aws validate
+        language: system
+        pass_filenames: false
+        files: '^terraform/aws/.*\.tf$'
+      - id: yamllint
+        name: yamllint (ansible + k8s)
+        entry: yamllint -d relaxed
+        language: system
+        files: '^(ansible|challenges/k8s)/.*\.ya?ml$'
+      - id: ansible-syntax
+        name: ansible-playbook --syntax-check
+        entry: ansible-playbook --syntax-check
+        language: system
+        files: '^ansible/.*\.yml$'
+        exclude: 'inventory.*'
+      - id: hooks-compile
+        name: py_compile .claude/hooks
+        entry: python -m py_compile
+        language: system
+        files: '^\.claude/hooks/.*\.py$'
+        require_serial: true
+
+# Lưu ý CI: yamllint/ansible cần pre-commit đã cài pip packages (xem setup-dev-env).
+# Không chạy hook nào đọc tfstate/tfvars (detect-private-key chỉ quét nội dung staged file).

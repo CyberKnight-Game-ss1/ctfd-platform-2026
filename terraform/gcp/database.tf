@@ -31,14 +31,14 @@ resource "google_sql_database_instance" "ctf_postgres" {
     tier = "db-f1-micro" # Nâng lên db-custom-2-8192 khi tổ chức thi thật
 
     ip_configuration {
-      ipv4_enabled    = false                         # Không cấp public IP cho DB
+      ipv4_enabled    = false # Không cấp public IP cho DB
       private_network = google_compute_network.ctf_vpc.id
     }
 
     backup_configuration {
       enabled                        = true
       point_in_time_recovery_enabled = true
-      start_time                     = "03:00"        # Backup lúc 3:00 AM ICT
+      start_time                     = "03:00" # Backup lúc 3:00 AM ICT
     }
   }
 

@@ -19,7 +19,7 @@
                     │ RDS PostgreSQL 15 (Private)  │
                     └──────────────────────────────┘
                                    │ sg_challenge (mTLS :2376)
-                    [VM2: ctf-vm2-challenge - EC2 t3.large]
+                    [VM2: ctf-vm2-challenge - EC2 m7i-flex.large]
                     ┌──────────────────────────────┐
                     │  Docker Socket Proxy (mTLS)  │
                     │  K3s (Kubernetes)            │
@@ -212,7 +212,7 @@ aws ssm get-parameter \
 | Resource | Spec | Chi phí/tháng |
 |---|---|---|
 | VM1 (ctf-vm1-web) | EC2 t3.medium On-Demand | ~$30 |
-| VM2 (ctf-vm2-challenge) | EC2 t3.large Spot (~70% off) | ~$12 |
+| VM2 (ctf-vm2-challenge) | EC2 m7i-flex.large Spot (~70% off) | ~$25-29 |
 | RDS PostgreSQL | db.t3.micro, 20GB gp3 | ~$15 |
 | S3 Bucket | < 10 GB | < $1 |
 | EventBridge Scheduler | 2 schedules | ~$0.10 |

@@ -25,7 +25,7 @@ if ! command -v docker &> /dev/null; then
     systemctl start docker
 fi
 
-echo "=== [4/5] Setting up Docker Socket Proxy with mTLS ==="
+echo "=== [4/5] Setting up Docker Socket Proxy for encrypted FRP access ==="
 mkdir -p /etc/docker/certs.d
 chmod 755 /etc/docker/certs.d
 
@@ -47,19 +47,21 @@ docker run -d \
   --name docker-proxy \
   --restart always \
   --privileged \
-  -p 2376:2376 \
+  -p 127.0.0.1:2376:2375 \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /etc/docker/certs.d:/run/secrets:ro \
   -e CONTAINERS=1 \
-  -e POST=0 \
-  -e START=1 \
-  -e STOP=1 \
-  -e RESTART=1 \
+  -e POST=1 \
+  -e SERVICES=1 \
+  -e SWARM=1 \
+  -e TASKS=1 \
+  -e EVENTS=1 \
+  -e NETWORKS=1 \
+  -e ALLOW_START=1 \
+  -e ALLOW_STOP=1 \
+  -e ALLOW_RESTARTS=1 \
   -e INFO=1 \
-  -e TLS_CERT_PATH=/run/secrets/server-cert.pem \
-  -e TLS_KEY_PATH=/run/secrets/server-key.pem \
-  -e TLS_CA_PATH=/run/secrets/ca.pem \
-  -e REQUIRE_TLS=1 \
+  -e PING=1 \
+  -e VERSION=1 \
   tecnativa/docker-socket-proxy
 
 echo "=== [5/5] Setting up tcpdump and K3s ==="

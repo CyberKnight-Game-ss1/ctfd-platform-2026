@@ -81,7 +81,7 @@ resource "aws_route_table_association" "public_2" {
 
 resource "aws_security_group" "sg_web" {
   name        = "ctf-sg-web"
-  description = "Web Server (VM1): chỉ cho phép HTTP/HTTPS từ Cloudflare"
+  description = "Web Server (VM1): HTTP/HTTPS only from Cloudflare (ASCII-only: AWS rejects non-ASCII SG descriptions)"
   vpc_id      = aws_vpc.ctf_vpc.id
 
   # Cho phép Cloudflare HTTP
@@ -92,7 +92,7 @@ resource "aws_security_group" "sg_web" {
       to_port     = 80
       protocol    = "tcp"
       cidr_blocks = [ingress.value]
-      description = "HTTP từ Cloudflare"
+      description = "HTTP from Cloudflare"
     }
   }
 
@@ -104,8 +104,27 @@ resource "aws_security_group" "sg_web" {
       to_port     = 443
       protocol    = "tcp"
       cidr_blocks = [ingress.value]
-      description = "HTTPS từ Cloudflare"
+      description = "HTTPS from Cloudflare"
     }
+  }
+
+  # FRPC on VM2 initiates its encrypted control connection to FRPS on VM1.
+  # Keep the listener private to this VPC; it is not a player-facing port.
+  ingress {
+    from_port   = 7000
+    to_port     = 7000
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+    description = "FRP control channel from the CTF VPC"
+  }
+
+  # Cho phép FRP challenge ports (10000-10100) cho người chơi
+  ingress {
+    from_port   = 10000
+    to_port     = 10100
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "FRP Challenge Ports"
   }
 
   # Cho phép mọi traffic ra ngoài
@@ -124,22 +143,14 @@ resource "aws_security_group" "sg_web" {
 
 # ============================================================
 # Security Group: VM2 - Challenge Server
-# Chỉ nhận Docker mTLS (2376) từ VM1, không expose ra internet
+# Docker API remains loopback-only and reaches VM1 through the encrypted FRP
+# tunnel. VM2 therefore needs no inbound Docker or FRPC admin port.
 # ============================================================
 
 resource "aws_security_group" "sg_challenge" {
   name        = "ctf-sg-challenge"
-  description = "Challenge Server (VM2): Docker mTLS chỉ nhận từ VM1 sg_web"
+  description = "Challenge Server (VM2): private Docker API via FRP tunnel"
   vpc_id      = aws_vpc.ctf_vpc.id
-
-  # Chỉ cho phép Docker mTLS từ VM1 (thông qua Security Group reference)
-  ingress {
-    from_port       = 2376
-    to_port         = 2376
-    protocol        = "tcp"
-    security_groups = [aws_security_group.sg_web.id]
-    description     = "Docker mTLS từ VM1 Web Server"
-  }
 
   # Cho phép mọi traffic ra ngoài (Docker cần kéo images từ internet)
   egress {
@@ -162,7 +173,7 @@ resource "aws_security_group" "sg_challenge" {
 
 resource "aws_security_group" "sg_db" {
   name        = "ctf-sg-db"
-  description = "RDS PostgreSQL: chỉ nhận kết nối từ VM1 Web Server"
+  description = "RDS PostgreSQL: connections only from VM1 Web Server (ASCII-only: AWS rejects non-ASCII SG descriptions)"
   vpc_id      = aws_vpc.ctf_vpc.id
 
   ingress {
@@ -170,7 +181,7 @@ resource "aws_security_group" "sg_db" {
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.sg_web.id]
-    description     = "PostgreSQL từ VM1 Web Server"
+    description     = "PostgreSQL from VM1 Web Server"
   }
 
   egress {

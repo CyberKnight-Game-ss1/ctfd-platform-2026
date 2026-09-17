@@ -64,7 +64,7 @@ data "aws_ami" "ubuntu_22_04" {
 
 # ============================================================
 # VM1 - Web Server (CTFd + Redis + Nginx)
-# instance type mặc định: t3.medium (2 vCPU, 4 GB RAM)
+# instance type mặc định: t3.small (2 vCPU, 2 GB RAM) — luyện tập; nếu OOM thì giảm WORKERS hoặc nâng type
 #
 # QUAN TRỌNG - Bảo mật IMDSv2:
 #   http_tokens = "required" bắt buộc dùng IMDSv2 thay vì IMDSv1
@@ -88,8 +88,8 @@ resource "aws_instance" "vm1_web" {
   # Bật IMDSv2 - BẮT BUỘC trong môi trường CTF có Web Exploitation challenge
   # Ngăn SSRF khai thác metadata endpoint để đánh cắp IAM credentials
   metadata_options {
-    http_tokens                 = "required"    # IMDSv2 only
-    http_put_response_hop_limit = 1             # Không cho container bên trong đọc metadata
+    http_tokens                 = "required" # IMDSv2 only
+    http_put_response_hop_limit = 1          # Không cho container bên trong đọc metadata
     http_endpoint               = "enabled"
   }
 
@@ -101,8 +101,30 @@ resource "aws_instance" "vm1_web" {
 }
 
 # ============================================================
+# Elastic IP cho VM1 (Web Server)
+# Lý do: không có EIP, mỗi lần stop/start VM1 (bảo trì, resize) public IP sẽ ĐỔI
+#   -> A record cyberknightgame.site trên Cloudflare trỏ sai cho tới khi sửa tay.
+# Chi phí: AWS tính $0.005/giờ (~$3.65/tháng) cho MỌI public IPv4 gắn vào instance
+#   đang chạy, kể cả IP động tự cấp -> EIP gần như TRUNG TÍNH chi phí mà cố định DNS.
+# LƯU Ý: KHÔNG gắn EIP cho VM2 — VM2 stop 7.5h/đêm, EIP gắn vào instance stopped
+#   vẫn bị tính phí -> thêm ~$3.65/tháng vô ích.
+# Khi associate EIP, AWS tự thu hồi IP động mà instance nhận lúc launch.
+# ============================================================
+
+resource "aws_eip" "vm1_web" {
+  domain   = "vpc"
+  instance = aws_instance.vm1_web.id
+
+  tags = {
+    Name    = "ctf-vm1-web-eip"
+    Project = "CyberKnight-CTF"
+  }
+}
+
+# ============================================================
 # VM2 - Challenge Server (Docker + K3s + CTFd Whale)
-# instance type mặc định: t3.large (2 vCPU, 8 GB RAM)
+# instance type mặc định: m7i-flex.large (2 vCPU, 8 GB RAM, x86_64)
+#   -> t3.large KHÔNG dùng được vì account đang ở AWS Free plan (chỉ cho free-tier-eligible type)
 # Dùng Spot Instance khi is_practice_mode = true (tiết kiệm ~60-70%)
 # ============================================================
 
@@ -127,11 +149,17 @@ resource "aws_instance" "vm2_challenge" {
   }
 
   # Dùng Spot Instance để tiết kiệm chi phí khi ở chế độ luyện tập
+  # LƯU Ý: `instance_interruption_behavior = "stop"` CHỈ hợp lệ với Spot request `persistent`
+  # (AWS trả lỗi: "The request with type 'one-time' is not supported when instanceInterruptionBehavior is set to 'STOP'").
+  # persistent + stop = khi AWS thu hồi capacity, instance chỉ STOP, EBS giữ nguyên, EC2 tự start lại khi có capacity.
+  # EventBridge stop ban đêm vẫn hoạt động vì "chỉ Amazon EC2 mới restart được instance bị stop do interruption"
+  # (user-initiated stop giữ nguyên trạng thái stopped).
   dynamic "instance_market_options" {
     for_each = var.is_practice_mode ? [1] : []
     content {
       market_type = "spot"
       spot_options {
+        spot_instance_type             = "persistent"
         instance_interruption_behavior = "stop"
       }
     }

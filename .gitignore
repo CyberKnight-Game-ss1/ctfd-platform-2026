@@ -41,3 +41,11 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# ===== Claude Code =====
+# Toàn bộ .claude/ được commit (skills vendored + settings + hooks + architecture),
+# ngoại trừ settings cá nhân và logs runtime.
+.claude/settings.local.json
+.claude/logs/
+!.claude/
+!.claude/**

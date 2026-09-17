@@ -1,21 +1,23 @@
-# Inventory Template cho AWS
-# Điền IP sau khi chạy: cd terraform/aws && terraform output
+# Inventory Template cho AWS — CHẾ ĐỘ SSM (khuyến nghị, dùng cho hạ tầng hiện tại)
+# Sinh tự động: pwsh -File .claude/scripts/gen-inventory.ps1
 #
-# Cách lấy IP:
-#   VM1: terraform output vm1_web_public_ip
-#   VM2: terraform output vm2_challenge_public_ip
+# Hạ tầng này KHÔNG tạo aws_key_pair và KHÔNG mở port 22 → không SSH bằng key được.
+# Ansible kết nối qua plugin `amazon.aws.aws_ssm`, với ansible_host = INSTANCE ID.
+# Lấy instance ID: terraform -chdir=terraform/aws output -raw vm1_instance_id
 #
-# LƯU Ý: Có thể SSH qua SSM Session Manager mà không cần mở port 22:
-#   aws ssm start-session --target <instance-id>
-# Trong trường hợp đó không cần inventory IP, dùng SSM plugin cho SSH:
-#   ansible_ssh_common_args='-o ProxyCommand="aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p"'
+# Yêu cầu control node: collection amazon.aws + boto3 + binary session-manager-plugin
+# (chạy trên WSL Ubuntu; Windows không chạy được ansible-core do thiếu module fcntl).
 
 [vm1_web]
-ctf-vm1-web ansible_host=<VM1_PUBLIC_IP> ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+ctf-vm1-web ansible_host=<VM1_INSTANCE_ID>
 
 [vm2_challenge]
-ctf-vm2-challenge ansible_host=<VM2_PUBLIC_IP> ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+ctf-vm2-challenge ansible_host=<VM2_INSTANCE_ID>
 
 [all:vars]
+ansible_connection=amazon.aws.aws_ssm
+ansible_aws_ssm_region=ap-southeast-1
+ansible_aws_ssm_bucket_name=<S3_BUCKET_NAME>
+ansible_aws_ssm_timeout=120
 ansible_python_interpreter=/usr/bin/python3
 aws_region=ap-southeast-1

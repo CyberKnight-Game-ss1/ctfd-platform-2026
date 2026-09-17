@@ -1,0 +1,20 @@
+# .clinerules — Cline tự load file này ở đầu mỗi task trong workspace
+# Chi tiết đầy đủ: CLAUDE.md + .claude/
+
+## Ngữ cảnh bắt buộc đọc trước khi làm bất kỳ việc gì
+1. `CLAUDE.md` (root) — tổng quan + luật bất di bất dịch
+2. `.claude/architecture/README.md` — kiến trúc AWS (region ap-southeast-1)
+3. Skill theo task:
+   - Deploy AWS → `.claude/skills/ctfd-aws/ctfd-aws-deploy/SKILL.md`
+   - Sửa Terraform → `ctfd-aws-terraform` · Ansible → `ctfd-aws-ansible`
+   - Sự cố → `ctfd-aws-troubleshoot` · Bảo mật → `ctfd-aws-security` · Chi phí → `ctfd-aws-cost`
+
+## Luật an toàn (hook đã chặn, agent không được tìm cách lách)
+- KHÔNG đọc/commit: `*.tfvars`, `*.tfstate`, `*.pem`, `*.key`, `ansible/*/inventory.ini`, `ctfd_config.txt`
+- KHÔNG chạy: `terraform destroy`, `aws ec2 terminate-instances`, `aws rds delete-db-instance`, `DROP/TRUNCATE`
+- Mọi lệnh AWS có region `ap-southeast-1`; SSH chỉ qua SSM Session Manager
+- `terraform apply` phải có user duyệt plan trước; luôn dry-run `-C --diff` với ansible-playbook
+- Tạo `ansible/aws/inventory.ini` (IP thật): xuất nội dung ra chat để USER tự lưu file, không tự Write
+
+## Bắt đầu phiên deploy
+Chạy `pwsh -File .claude/scripts/check-env.ps1` → báo thiếu tool → `pwsh -File .claude/scripts/setup-dev-env.ps1`

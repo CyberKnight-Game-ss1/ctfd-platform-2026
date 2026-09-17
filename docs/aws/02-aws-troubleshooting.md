@@ -43,14 +43,21 @@ sudo docker ps
 # Xem logs CTFd realtime
 sudo docker logs -f ctfd_ctfd_1
 
-# Khởi động lại CTFd
-cd /opt/ctfd
-DB_URL=$(aws ssm get-parameter --name /ctfd/database-url --with-decryption --query Parameter.Value --output text --region ap-southeast-1)
-sudo DATABASE_URL="$DB_URL" docker-compose restart ctfd
+# Khởi động lại CTFd (compose v2 tự đọc /opt/ctfd/.env — KHÔNG cần export secret)
+cd /opt/ctfd && sudo docker compose restart ctfd
 
 # Flush Redis cache (sau khi cập nhật template HTML)
 sudo docker exec ctfd_cache_1 redis-cli FLUSHALL
 ```
+
+> ⚠️ Dùng `docker compose` (v2), **không** dùng `docker-compose` v1: gói
+> `docker-compose` 1.29.2 của Ubuntu dùng Docker API cũ nên khi **recreate**
+> container trên Docker Engine 29 sẽ nổ `KeyError: 'ContainerConfig'` và playbook
+> mất idempotent (lần `up` đầu chạy được, các lần sau fail). Playbook đã cài
+> `docker-compose-v2` và tự gỡ gói v1.
+>
+> Database là **container `ctfd_db_1`** (`use_rds=false`), không phải RDS → password
+> nằm trong `/opt/ctfd/.env` (0600), không có SSM parameter `/ctfd/database-url`.
 
 ### RDS PostgreSQL
 

@@ -1,11 +1,10 @@
 ---
 # ============================================================
 # mtls_setup.yml - DÙNG CHUNG cho cả GCP và AWS
-# Phân phối chứng chỉ mTLS để bảo mật kết nối Docker API
-# giữa VM1 (Web Server) và VM2 (Challenge Server)
-#
-# Chạy TRƯỚC khi chạy vm2_challenge.yml
-# Yêu cầu: scripts/mtls_certs/ phải có các file PEM được generate sẵn
+# Legacy compatibility playbook for an alternate direct Docker API topology.
+# The production CTFd-Whale deployment uses an encrypted FRP tunnel instead,
+# so this playbook is not required and its certificates are not uploaded to
+# Whale. It is retained only for environments that intentionally use mTLS.
 # ============================================================
 
 # ---- VM2: Nhận Server certs (xác thực danh tính server) ----
@@ -64,4 +63,6 @@
       copy:
         src: ../../scripts/mtls_certs/key.pem
         dest: /etc/docker/client-certs/key.pem
+        owner: "1001"
+        group: "1001"
         mode: '0400'   # Chỉ root đọc được private key

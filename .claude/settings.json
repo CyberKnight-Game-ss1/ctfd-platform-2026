@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "AWS_DEFAULT_REGION": "ap-southeast-1",
+    "AWS_PAGER": "",
+    "TF_IN_AUTOMATION": "true",
+    "TF_INPUT": "0",
+    "ANSIBLE_HOST_KEY_CHECKING": "False"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(terraform init:*)",
+      "Bash(terraform fmt:*)",
+      "Bash(terraform validate:*)",
+      "Bash(terraform plan:*)",
+      "Bash(terraform output:*)",
+      "Bash(terraform state list:*)",
+      "Bash(terraform show:*)",
+      "Bash(terraform workspace list:*)",
+      "Bash(terraform -chdir=terraform/aws fmt:*)",
+      "Bash(terraform -chdir=terraform/aws validate:*)",
+      "Bash(terraform -chdir=terraform/aws plan:*)",
+      "Bash(terraform -chdir=terraform/aws output:*)",
+      "Bash(terraform -chdir=terraform/aws state list:*)",
+      "Bash(aws sts get-caller-identity:*)",
+      "Bash(aws configure get:*)",
+      "Bash(aws ec2 describe-instances:*)",
+      "Bash(aws ec2 describe-instance-status:*)",
+      "Bash(aws ssm describe-instance-information:*)",
+      "Bash(aws ssm get-parameter:*)",
+      "Bash(aws ssm start-session:*)",
+      "Bash(aws rds describe-db-instances:*)",
+      "Bash(aws logs tail:*)",
+      "Bash(aws logs filter-log-events:*)",
+      "Bash(aws logs describe-log-groups:*)",
+      "Bash(aws s3 ls:*)",
+      "Bash(aws ce get-cost-and-usage:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker images:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker compose config:*)",
+      "Bash(python --version)",
+      "Bash(python -m py_compile:*)",
+      "Bash(pip list:*)",
+      "Bash(ansible-playbook --syntax-check:*)",
+      "Bash(ansible-lint:*)",
+      "Bash(yamllint:*)",
+      "Bash(tflint:*)",
+      "Bash(pwsh -File .claude/scripts/*)",
+      "Bash(powershell -File .claude/scripts/*)"
+    ],
+    "ask": [
+      "Bash(terraform apply:*)",
+      "Bash(terraform -chdir=terraform/aws apply:*)",
+      "Bash(terraform import:*)",
+      "Bash(terraform state rm:*)",
+      "Bash(ansible-playbook:*)",
+      "Bash(aws ec2 start-instances:*)",
+      "Bash(aws ec2 stop-instances:*)",
+      "Bash(aws ssm send-command:*)",
+      "Bash(aws s3 sync:*)",
+      "Bash(aws s3 cp:*)"
+    ],
+    "deny": [
+      "Bash(terraform destroy:*)",
+      "Bash(terraform -chdir=terraform/aws destroy:*)",
+      "Bash(aws ec2 terminate-instances:*)",
+      "Bash(aws rds delete-db-instance:*)",
+      "Bash(aws s3 rb:*)",
+      "Bash(aws s3api delete-bucket:*)",
+      "Bash(aws ssm delete-parameter:*)",
+      "Read(./**/*.tfvars)",
+      "Read(./**/*.tfvars.json)",
+      "Read(./**/*.tfstate*)",
+      "Read(./scripts/mtls_certs/**)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./ansible/aws/inventory.ini)",
+      "Read(./ansible/gcp/inventory.ini)",
+      "Read(./ctfd_config.txt)",
+      "Read(./remote_docker-compose.yml)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect_secrets.py\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_dangerous_ops.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect_secrets.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/tf_format_check.py\"",
+            "timeout": 25
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Write|Edit|MultiEdit|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/log_activity.py\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_context.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "outputStyle": "default"
+}

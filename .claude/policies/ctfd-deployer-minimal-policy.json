@@ -1,0 +1,43 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TerraformDeployCore",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:*",
+        "rds:*",
+        "s3:*",
+        "ssm:*",
+        "scheduler:*",
+        "logs:*",
+        "sts:GetCallerIdentity",
+        "ce:GetCostAndUsage"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "IamOnlyForInstanceProfiles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:ListRoles",
+        "iam:ListAttachedRolePolicies",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:PassRole",
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:TagRole"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

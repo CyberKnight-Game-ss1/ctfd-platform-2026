@@ -13,7 +13,7 @@ resource "random_id" "bucket_suffix" {
 resource "google_storage_bucket" "ctf_storage" {
   name          = "ctf-storage-${random_id.bucket_suffix.hex}"
   location      = var.region
-  force_destroy = true  # Đổi thành false khi thi đấu thật
+  force_destroy = true # Đổi thành false khi thi đấu thật
 
   lifecycle_rule {
     condition {

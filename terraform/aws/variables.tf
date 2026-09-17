@@ -25,7 +25,7 @@ variable "subnet_public_2_cidr" {
 variable "cloudflare_ips" {
   description = "Cloudflare IPv4 ranges (dùng để giới hạn traffic HTTP/HTTPS vào VM1)"
   type        = list(string)
-  default     = [
+  default = [
     "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
     "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20",
     "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
@@ -53,17 +53,27 @@ variable "is_practice_mode" {
 variable "vm1_instance_type" {
   description = "EC2 instance type cho VM1 (Web Server)"
   type        = string
-  default     = "t3.medium" # 2 vCPU, 4 GB RAM
+  default     = "t3.small" # 2 vCPU, 2 GB RAM — CTFd + Redis + Nginx + PG container, gọn cho luyện tập (yêu cầu user 09/2026)
 }
 
 variable "vm2_instance_type" {
   description = "EC2 instance type cho VM2 (Challenge Server)"
   type        = string
-  default     = "t3.large" # 2 vCPU, 8 GB RAM
+  default     = "m7i-flex.large" # 2 vCPU, 8 GB RAM — đủ cho Docker + K3s + nsjail chạy nhiều instance (yêu cầu user 09/2026).
+  # LƯU Ý: account này ở AWS Free plan → CHỈ được launch instance type free-tier-eligible.
+  # t3.large bị AWS từ chối (InvalidParameterCombination: not eligible for Free Tier).
+  # m7i-flex.large nằm trong allowlist free-tier của ap-southeast-1 và cũng là x86_64 + 8 GB RAM.
+  # Kiểm tra lại allowlist: aws ec2 describe-instance-types --region ap-southeast-1 --filters 'Name=free-tier-eligible,Values=true'
 }
 
 variable "db_instance_class" {
   description = "RDS instance class cho PostgreSQL"
   type        = string
   default     = "db.t3.micro" # Đủ dùng cho CTF quy mô nhỏ-vừa
+}
+
+variable "use_rds" {
+  description = "true = provision RDS PostgreSQL + SSM /ctfd/database-url (phương án B, ~+$15/tháng). false = PostgreSQL chạy container trên VM1 như playbook vm1_web.yml (phương án A) — bỏ qua RDS để không trả chi phí vô ích"
+  type        = bool
+  default     = true
 }

@@ -4,6 +4,7 @@
   become: yes
   vars:
     ctfd_dir: /opt/ctfd
+    ctf_domain: cyberknightgame.site
 
   tasks:
     - name: Update apt cache
@@ -39,6 +40,74 @@
         src: ../../themes/
         dest: "{{ ctfd_dir }}/themes/"
 
+    - name: Create custom Dockerfile for CTFd-Whale
+      copy:
+        dest: "{{ ctfd_dir }}/Dockerfile"
+        content: |
+          FROM ctfd/ctfd:latest
+          USER root
+          RUN apt-get update && apt-get install -y git
+          RUN git clone https://github.com/frankli0324/ctfd-whale.git /opt/CTFd/CTFd/plugins/ctfd-whale
+          # ctfd-whale pins docker==4.1.0 (API v1.35), which is too old for
+          # current Docker Engine releases. Override it with a compatible SDK.
+          RUN cd /opt/CTFd/CTFd/plugins/ctfd-whale && pip install -r requirements.txt && pip install --no-cache-dir --upgrade docker==7.1.0
+          USER 1001
+
+    - name: Create FRP directory
+      file:
+        path: "{{ ctfd_dir }}/frp"
+        state: directory
+        mode: '0755'
+
+    - name: Create frps.ini
+      copy:
+        dest: "{{ ctfd_dir }}/frp/frps.ini"
+        content: |
+          [common]
+          bind_port = 7000
+          dashboard_port = 7400
+          vhost_http_port = 8080
+          # Required for CTFd-Whale HTTP instances that use `subdomain`.
+          subdomain_host = {{ ctf_domain }}
+          token = secret_frp_token_2026
+
+    - name: Create Google Form Email Plugin directory
+      file:
+        path: "{{ ctfd_dir }}/plugins/google_form_email"
+        state: directory
+        owner: "1001"
+        group: "1001"
+        mode: '0755'
+
+    - name: Write Google Form Email Plugin code
+      copy:
+        dest: "{{ ctfd_dir }}/plugins/google_form_email/__init__.py"
+        owner: "1001"
+        group: "1001"
+        mode: '0644'
+        content: |
+          import urllib.request
+          import urllib.parse
+          import CTFd.utils.email
+          
+          def form_sendmail(addr, text, subject):
+              url = "https://docs.google.com/forms/d/e/1FAIpQLSe-ynAZ_yfKm93s_Fe8bBMpk8BraXToQForOWlQ2-_xvmVyqQ/formResponse"
+              data = {
+                  "entry.79252641": addr,
+                  "entry.1191181504": subject,
+                  "entry.1288287855": text
+              }
+              encoded_data = urllib.parse.urlencode(data).encode('utf-8')
+              req = urllib.request.Request(url, data=encoded_data)
+              try:
+                  urllib.request.urlopen(req)
+                  return True, "Email sent via Google Form"
+              except Exception as e:
+                  return False, str(e)
+          
+          def load(app):
+              CTFd.utils.email.sendmail = form_sendmail
+
     - name: Create docker-compose.yml cho CTFd + Redis
       copy:
         dest: "{{ ctfd_dir }}/docker-compose.yml"
@@ -46,7 +115,7 @@
           version: '3'
           services:
             ctfd:
-              image: ctfd/ctfd:latest
+              build: .
               restart: always
               ports:
                 - "8000:8000"
@@ -64,6 +133,7 @@
                 - {{ ctfd_dir }}/logs:/var/log/CTFd
                 - {{ ctfd_dir }}/uploads:/var/uploads
                 - {{ ctfd_dir }}/themes/ctfd-theme-neubrutalism:/opt/CTFd/CTFd/themes/ctfd-theme-neubrutalism
+                - {{ ctfd_dir }}/plugins/google_form_email:/opt/CTFd/CTFd/plugins/google_form_email
               depends_on:
                 - cache
 
@@ -91,9 +161,24 @@
               volumes:
                 - {{ ctfd_dir }}/logs:/var/log/CTFd
                 - {{ ctfd_dir }}/uploads:/var/uploads
+                - {{ ctfd_dir }}/plugins/google_form_email:/opt/CTFd/CTFd/plugins/google_form_email
               depends_on:
                 - ctfd
                 - cache
+
+            frps:
+              image: glzjin/frp
+              restart: always
+              environment:
+                # glzjin/frp reads server configuration from /etc/frp/frps.ini.
+                FRP_MODE: frps
+              volumes:
+                - {{ ctfd_dir }}/frp:/etc/frp:ro
+              ports:
+                - "7000:7000"
+                - "10000-10100:10000-10100"
+                - "127.0.0.1:8080:8080"
+                - "127.0.0.1:7400:7400"
 
     # Lấy DATABASE_URL từ GCP Secret Manager
     - name: Lấy DATABASE_URL từ GCP Secret Manager
@@ -108,7 +193,7 @@
       when: db_url is not defined and db_url_result is defined
 
     - name: Start CTFd via docker-compose
-      shell: "DATABASE_URL='{{ db_url }}' docker-compose up -d"
+      shell: "DATABASE_URL='{{ db_url }}' docker-compose up -d --build"
       args:
         chdir: "{{ ctfd_dir }}"
 
@@ -116,11 +201,67 @@
       copy:
         dest: /etc/nginx/sites-available/default
         content: |
+          # Instance traffic is terminated by Nginx and forwarded to FRP.
+          # The wildcard host keeps each deployed instance on its UUID hostname.
+          server {
+              listen 80;
+              listen [::]:80;
+              server_name *.{{ ctf_domain }};
+              client_max_body_size 200M;
+
+              location / {
+                  proxy_pass http://127.0.0.1:8080;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_http_version 1.1;
+                  proxy_buffering off;
+              }
+          }
+
           server {
               listen 80 default_server;
+              listen [::]:80 default_server;
               client_max_body_size 200M;
 
               # Proxy to CTFd
+              location / {
+                  proxy_pass http://127.0.0.1:8000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+          }
+
+          server {
+              listen 443 ssl;
+              listen [::]:443 ssl;
+              server_name *.{{ ctf_domain }};
+              client_max_body_size 200M;
+              ssl_certificate /etc/nginx/ssl/nginx.crt;
+              ssl_certificate_key /etc/nginx/ssl/nginx.key;
+
+              location / {
+                  proxy_pass http://127.0.0.1:8080;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_http_version 1.1;
+                  proxy_buffering off;
+              }
+          }
+
+          server {
+              listen 443 ssl default_server;
+              listen [::]:443 ssl default_server;
+              server_name {{ ctf_domain }};
+              client_max_body_size 200M;
+              ssl_certificate /etc/nginx/ssl/nginx.crt;
+              ssl_certificate_key /etc/nginx/ssl/nginx.key;
+
               location / {
                   proxy_pass http://127.0.0.1:8000;
                   proxy_set_header Host $host;

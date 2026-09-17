@@ -59,7 +59,7 @@ ctfd-platform-2026/
 │       ├── provider.tf
 │       ├── variables.tf
 │       ├── network.tf           # VPC, Subnets (2 AZs), Security Groups
-│       ├── compute.tf           # EC2 t3.medium & t3.large (Spot), IAM Role, IMDSv2 hardening
+│       ├── compute.tf           # EC2 t3.small & m7i-flex.large (Spot), IAM Role, IMDSv2 hardening
 │       ├── database.tf          # RDS PostgreSQL 15 + SSM Parameter Store (SecureString)
 │       ├── storage_and_automation.tf  # S3 Bucket + EventBridge Scheduler
 │       └── outputs.tf
@@ -191,8 +191,8 @@ ansible-playbook -i ansible/aws/inventory.ini ansible/aws/vm1_web.yml
 
 | | 🟦 GCP | 🟧 AWS |
 |---|---|---|
-| **Web Server VM** | Compute Engine `e2-medium` | EC2 `t3.medium` |
-| **Challenge VM** | Compute Engine `e2-standard-2` (Spot) | EC2 `t3.large` (Spot) |
+| **Web Server VM** | Compute Engine `e2-medium` | EC2 `t3.small` |
+| **Challenge VM** | Compute Engine `e2-standard-2` (Spot) | EC2 `m7i-flex.large` (Spot) |
 | **Database** | Cloud SQL PostgreSQL 15 | RDS PostgreSQL 15 |
 | **Object Storage** | Google Cloud Storage (GCS) | Amazon S3 |
 | **Secret Storage** | GCP Secret Manager | SSM Parameter Store (SecureString) |
@@ -247,6 +247,31 @@ ansible-playbook -i ansible/aws/inventory.ini ansible/aws/vm1_web.yml
 | [docs/common/01-theme-and-frontend.md](docs/common/01-theme-and-frontend.md) | Theme customization, Alpine.js → Vanilla JS migration |
 | [docs/common/02-ctfd-and-api-quirks.md](docs/common/02-ctfd-and-api-quirks.md) | CTFd configuration, SMTP, file upload, API quirks |
 | [docs/common/03-challenges-k8s.md](docs/common/03-challenges-k8s.md) | Dynamic challenges, K3s management, nsjail, PCAP |
+
+---
+
+## AI Agent Toolkit (`.claude/`)
+
+Repo này có bộ cấu hình agent chuẩn Claude Code để deploy/vận hành hạ tầng AWS an toàn:
+
+| Thành phần | Mô tả |
+|---|---|
+| [`CLAUDE.md`](CLAUDE.md) | Ngữ cảnh mặc định + luật bất di bất dịch cho agent |
+| [`.claude/architecture/`](.claude/architecture/README.md) | 8 tài liệu kiến trúc AWS (network, compute, data, security, observability, deployment, cost) với mermaid diagrams |
+| [`.claude/skills/ctfd-aws/`](.claude/skills/README.md) | 8 skills chuyên biệt (deploy, terraform, ansible, troubleshoot, security, cost...) |
+| [`.claude/skills/vendored/`](.claude/skills/vendored/VENDORED.md) | DevOps skills clone từ upstream: [anthropics/skills](https://github.com/anthropics/skills), [obra/superpowers](https://github.com/obra/superpowers), [wshobson/agents](https://github.com/wshobson/agents) |
+| [`.claude/commands/`](.claude/commands) | Slash commands: `/aws-deploy`, `/aws-status`, `/aws-ssh`, `/aws-logs`, `/aws-cost`... |
+| [`.claude/agents/`](.claude/agents) | 5 subagent: terraform-engineer, ansible-operator, incident-responder, security-hardener, devops-architect |
+| [`.claude/hooks/`](.claude/hooks/README.md) | Python guards: chặn đọc secrets, chặn `terraform destroy`/terminate, format check, audit log |
+| [`.claude/scripts/`](.claude/scripts) | `check-env`, `setup-dev-env`, `validate-all`, `test-hooks`, `update-skills`, `new-skill` |
+
+```powershell
+# Thiết lập môi trường dev cho agent workflow
+pwsh -File .claude/scripts/check-env.ps1
+pwsh -File .claude/scripts/setup-dev-env.ps1
+pwsh -File .claude/scripts/test-hooks.ps1     # xác nhận guards chạy đúng (11/11 pass)
+pwsh -File .claude/scripts/validate-all.ps1   # validate IaC offline
+```
 
 ---
 
