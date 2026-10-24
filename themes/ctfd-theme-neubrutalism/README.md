@@ -38,11 +38,26 @@ ctfd-platform-2026/
 
 ## Preview
 
-<img width="1856" height="1038" alt="CTFd Challenges Page" src="https://github.com/user-attachments/assets/4cae1d63-7c71-472c-a221-224666e4d4c2" />
+### 🏠 Home Page
+<img alt="CyberKnight Game Weekly — Home Page" src="static/img/311400bc6192e1ccb8838.jpg" />
+
+### 🏆 Scoreboard
+<img alt="Scoreboard — Score over time & Leaderboard" src="static/img/d4edef458e6b0e35577a7.jpg" />
+
+### 👥 Teams List
+<img alt="Teams List" src="static/img/94871830791ef940a00f6.jpg" />
+
+### 🥇 Team Profiles
+
+<img alt="CK_Nameless — 1st place" src="static/img/f7115ea43f8abfd4e69b5.jpg" />
 <br>
-<img width="1856" height="1228" alt="CTFd Home Page" src="https://github.com/user-attachments/assets/f1564eb5-18f9-4142-9458-2eb60feee222" />
+<img alt="3changlinhngulam — 2nd place" src="static/img/d3a78609e72767793e364.jpg" />
 <br>
-<img width="1856" height="1183" alt="CTFd Scoreboard Page" src="https://github.com/user-attachments/assets/d753079a-4ed6-4a2e-82f5-7e90cfee3c93" />
+<img alt="CK_TDS — 3rd place" src="static/img/4ed2817ae054600a39453.jpg" />
+<br>
+<img alt="Cipher — 4th place" src="static/img/9518b8b4d99a59c4008b2.jpg" />
+<br>
+<img alt="CK_HANK.exe — 5th place" src="static/img/370517a97687f6d9af961.jpg" />
 
 ---
 
